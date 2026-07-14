@@ -9,7 +9,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Enable CORS
-app.use(cors());
+// Enable CORS for your frontend
+app.use(cors({
+  origin: '*' 
+}));
 
 // Body Parsers
 app.use(express.json());
