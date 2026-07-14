@@ -94,9 +94,10 @@ app.post('/api/generate', upload.single('photo'), async (req, res) => {
     }
 
     // Build absolute/relative URLs for client access
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const baseUrl = `${protocol}://${host}/generated`;
+   // Build absolute/relative URLs for client access
+const host = req.get('host');
+const protocol = host.includes('render.com') ? 'https' : req.protocol;
+const baseUrl = `${protocol}://${host}/generated`;
 
     const posters = {
       luxuryPurple: `${baseUrl}/${resultFiles.luxuryPurple}`,
