@@ -1,34 +1,30 @@
 const express = require("express");
 
 const {
-  exportPosterController,
+  removeBackgroundController,
 } = require(
-  "../controllers/exportController"
+  "../controllers/backgroundRemovalController"
 );
 
 const router = express.Router();
 
 /*
 |--------------------------------------------------------------------------
-| POST /api/export
+| POST /api/background-removal
 |--------------------------------------------------------------------------
 |
 | JSON body:
 |
 | {
-|   "ownerKey": "guest_123",
-|   "designId": "optional-design-uuid",
-|   "title": "Siva Birthday Poster",
-|   "format": "png",
-|   "quality": 92,
-|   "imageDataUrl": "data:image/png;base64,..."
+|   "assetId": "uploaded-asset-id",
+|   "ownerKey": "guest-owner-key"
 | }
 |
 */
 
 router.post(
   "/",
-  exportPosterController
+  removeBackgroundController
 );
 
 module.exports = router;

@@ -5,7 +5,15 @@ const {
   generateSimilarTemplates,
 } = require("../services/templateEngine");
 
-function listTemplates(req, res, next) {
+const supabase = require(
+  "../config/supabase"
+);
+
+async function listTemplates(
+  req,
+  res,
+  next
+) {
   try {
     const result = getTemplates({
       page: req.query.page,
@@ -17,10 +25,71 @@ function listTemplates(req, res, next) {
       sortBy: req.query.sortBy,
     });
 
+    const templateIds =
+      result.templates.map(
+        (template) =>
+          template.id
+      );
+
+    let previewMap = new Map();
+
+    if (templateIds.length) {
+      const {
+        data: previews,
+        error,
+      } = await supabase
+        .from("template_previews")
+        .select(
+          "template_id, preview_url"
+        )
+        .in(
+          "template_id",
+          templateIds
+        );
+
+      if (error) {
+        console.error(
+          "Unable to fetch template previews:",
+          error.message
+        );
+      } else {
+        previewMap = new Map(
+          (previews || []).map(
+            (preview) => [
+              preview.template_id,
+              preview.preview_url,
+            ]
+          )
+        );
+      }
+    }
+
+    const templates =
+      result.templates.map(
+        (template) => ({
+          ...template,
+
+          preview: {
+            ...template.preview,
+
+            url:
+              previewMap.get(
+                template.id
+              ) || null,
+          },
+        })
+      );
+
     return res.status(200).json({
       success: true,
-      message: "Templates fetched successfully.",
-      ...result,
+
+      message:
+        "Templates fetched successfully.",
+
+      templates,
+
+      pagination:
+        result.pagination,
     });
   } catch (error) {
     return next(error);

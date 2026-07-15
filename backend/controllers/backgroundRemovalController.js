@@ -1,29 +1,33 @@
 const {
-  exportPoster,
+  removeAssetBackground,
 } = require(
-  "../services/exportService"
+  "../services/backgroundRemovalService"
 );
 
 /*
 |--------------------------------------------------------------------------
-| POST /api/export
+| POST /api/background-removal
 |--------------------------------------------------------------------------
 */
 
-async function exportPosterController(
+async function removeBackgroundController(
   req,
   res,
   next
 ) {
   try {
     const {
+      assetId,
       ownerKey,
-      designId,
-      title,
-      format,
-      quality,
-      imageDataUrl,
     } = req.body;
+
+    if (!assetId) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "assetId is required.",
+      });
+    }
 
     if (!ownerKey) {
       return res.status(400).json({
@@ -33,29 +37,24 @@ async function exportPosterController(
       });
     }
 
-    if (!imageDataUrl) {
-      return res.status(400).json({
+    const result =
+      await removeAssetBackground({
+        assetId,
+        ownerKey,
+      });
+
+    if (!result) {
+      return res.status(404).json({
         success: false,
         error:
-          "imageDataUrl is required.",
+          "Source image was not found.",
       });
     }
-
-    const result =
-      await exportPoster({
-        ownerKey,
-        designId,
-        title,
-        format:
-          format || "png",
-        quality,
-        imageDataUrl,
-      });
 
     return res.status(201).json({
       success: true,
       message:
-        "Poster exported successfully.",
+        "Background removed successfully.",
       ...result,
     });
   } catch (error) {
@@ -64,5 +63,5 @@ async function exportPosterController(
 }
 
 module.exports = {
-  exportPosterController,
+  removeBackgroundController,
 };
