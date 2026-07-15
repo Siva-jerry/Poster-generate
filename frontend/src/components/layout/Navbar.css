@@ -1,0 +1,149 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  height: var(--navbar-height);
+
+  background:
+    rgba(255, 255, 255, 0.86);
+
+  border-bottom: 1px solid
+    rgba(238, 232, 228, 0.8);
+
+  backdrop-filter: blur(18px);
+}
+
+.navbar__container {
+  width: min(
+    calc(100% - 40px),
+    var(--container-width)
+  );
+  height: 100%;
+  margin-inline: auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar__link {
+  position: relative;
+
+  padding: 9px 14px;
+
+  color: var(--color-muted);
+
+  border-radius:
+    var(--radius-round);
+
+  font-size: 0.93rem;
+  font-weight: 700;
+
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.navbar__link:hover {
+  color: var(--color-heading);
+  background:
+    var(--color-primary-light);
+}
+
+.navbar__link--active {
+  color: var(--color-primary-dark);
+  background:
+    var(--color-primary-light);
+}
+
+.navbar__menu-button {
+  width: 42px;
+  height: 42px;
+
+  display: none;
+  place-items: center;
+
+  color: var(--color-heading);
+  background: var(--color-white);
+
+  border: 1px solid
+    var(--color-border);
+
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.navbar__mobile-action {
+  display: none;
+}
+
+@media (max-width: 840px) {
+  .navbar__desktop-action {
+    display: none;
+  }
+
+  .navbar__menu-button {
+    display: grid;
+  }
+
+  .navbar__nav {
+    position: fixed;
+    top: calc(
+      var(--navbar-height) + 10px
+    );
+    left: 20px;
+    right: 20px;
+
+    display: grid;
+    gap: 6px;
+
+    padding: 18px;
+
+    background: #ffffff;
+
+    border: 1px solid
+      var(--color-border);
+
+    border-radius:
+      var(--radius-lg);
+
+    box-shadow:
+      var(--shadow-md);
+
+    opacity: 0;
+    visibility: hidden;
+
+    transform:
+      translateY(-14px)
+      scale(0.98);
+
+    transition:
+      opacity var(--transition-normal),
+      visibility var(--transition-normal),
+      transform var(--transition-normal);
+  }
+
+  .navbar__nav--open {
+    opacity: 1;
+    visibility: visible;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+
+  .navbar__link {
+    padding: 13px 15px;
+  }
+
+  .navbar__mobile-action {
+    display: block;
+    margin-top: 8px;
+  }
+}

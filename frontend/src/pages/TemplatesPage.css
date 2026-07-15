@@ -1,0 +1,156 @@
+.templates-page {
+  position: relative;
+}
+
+.templates-page__hero {
+  position: relative;
+
+  padding:
+    74px 0 95px;
+
+  overflow: hidden;
+
+  text-align: center;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fff8f3,
+      #ffffff,
+      #f8f2ff
+    );
+}
+
+.templates-page__shape {
+  position: absolute;
+
+  display: block;
+
+  border-radius: 50%;
+}
+
+.templates-page__shape--orange {
+  width: 370px;
+  height: 370px;
+
+  top: -210px;
+  left: -130px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 107, 26, 0.22),
+      transparent 68%
+    );
+}
+
+.templates-page__shape--purple {
+  width: 430px;
+  height: 430px;
+
+  top: -230px;
+  right: -165px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(124, 60, 255, 0.18),
+      transparent 68%
+    );
+}
+
+.templates-page__hero h1 {
+  max-width: 950px;
+
+  margin:
+    10px auto 0;
+
+  color:
+    var(--color-heading);
+
+  font-family:
+    var(--font-heading);
+
+  font-size:
+    clamp(
+      2.8rem,
+      6.5vw,
+      5.4rem
+    );
+
+  line-height: 0.99;
+  letter-spacing: -0.065em;
+}
+
+.templates-page__hero
+> div > p {
+  max-width: 680px;
+
+  margin:
+    20px auto 0;
+
+  color:
+    var(--color-muted);
+
+  font-size: 1rem;
+}
+
+.templates-page__features {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  margin-top: 26px;
+}
+
+.templates-page__features
+span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 8px 12px;
+
+  color:
+    var(--color-text);
+
+  background:
+    rgba(255, 255, 255, 0.78);
+
+  border:
+    1px solid
+    var(--color-border);
+
+  border-radius:
+    var(--radius-round);
+
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.templates-page__features
+svg {
+  color:
+    var(--color-primary);
+}
+
+.templates-page__gallery {
+  padding:
+    45px 0 100px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #fffdfb,
+      #fff8f4
+    );
+}
+
+@media (max-width: 560px) {
+  .templates-page__hero {
+    padding:
+      58px 0 75px;
+  }
+}

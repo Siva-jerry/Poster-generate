@@ -1,48 +1,27 @@
-/**
- * SmartWish AI Frontend API Service
- */
+import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/api` 
-  : '/api';
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:5000/api";
 
-export async function generatePostersApi(studentData, photoFile, apiKey) {
-  const formData = new FormData();
-  
-  // Append text fields
-  formData.append('name', studentData.name);
-  formData.append('department', studentData.department);
-  formData.append('year', studentData.year);
-  formData.append('rollNo', studentData.rollNo);
-  formData.append('birthdayQuote', studentData.birthdayQuote || '');
-  if (apiKey) {
-    formData.append('apiKey', apiKey);
+const api = axios.create({
+  baseURL: apiBaseUrl,
+  timeout: 120000,
+});
+
+api.interceptors.response.use(
+  (response) => response,
+
+  (error) => {
+    const message =
+      error.response?.data?.error ||
+      error.message ||
+      "The request could not be completed.";
+
+    return Promise.reject(
+      new Error(message)
+    );
   }
-  
-  // Append file
-  formData.append('photo', photoFile);
+);
 
-  const response = await fetch(`${API_BASE}/generate`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to generate birthday posters.');
-  }
-
-  return await response.json();
-}
-
-export async function checkBackendHealth() {
-  try {
-    const response = await fetch(`${API_BASE}/health`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch (err) {
-    console.error('Backend health check failed:', err);
-  }
-  return null;
-}
+export default api;

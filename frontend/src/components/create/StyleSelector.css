@@ -1,0 +1,305 @@
+.style-selector {
+  padding: 27px;
+
+  background: #ffffff;
+
+  border:
+    1px solid
+    var(--color-border);
+
+  border-radius:
+    var(--radius-lg);
+
+  box-shadow:
+    var(--shadow-xs);
+}
+
+.style-selector__heading > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: var(--color-primary);
+
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.style-selector__heading h3 {
+  margin-top: 7px;
+
+  color: var(--color-heading);
+
+  font-family:
+    var(--font-heading);
+
+  font-size: 1.3rem;
+}
+
+.style-selector__heading p {
+  margin-top: 5px;
+
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.style-selector__grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.style-option {
+  position: relative;
+
+  min-height: 90px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 14px;
+
+  text-align: left;
+
+  color: var(--color-text);
+  background: #ffffff;
+
+  border:
+    1px solid
+    var(--color-border);
+
+  border-radius:
+    var(--radius-md);
+
+  cursor: pointer;
+
+  transition:
+    transform var(--transition-fast),
+    border-color
+      var(--transition-fast),
+    box-shadow
+      var(--transition-normal);
+}
+
+.style-option:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    var(--shadow-sm);
+}
+
+.style-option--active {
+  border-color:
+    var(--color-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(255, 107, 26, 0.1);
+}
+
+.style-option__icon {
+  flex: 0 0 auto;
+
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+
+  border-radius: 13px;
+}
+
+.style-option__content {
+  display: grid;
+}
+
+.style-option__content strong {
+  color: var(--color-heading);
+
+  font-family:
+    var(--font-heading);
+
+  font-size: 0.86rem;
+}
+
+.style-option__content small {
+  margin-top: 3px;
+
+  color: var(--color-muted);
+  font-size: 0.66rem;
+}
+
+.style-option__check {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+
+  width: 20px;
+  height: 20px;
+
+  display: none;
+  place-items: center;
+
+  color: #ffffff;
+  background:
+    var(--color-primary);
+
+  border-radius: 50%;
+
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.style-option--active
+.style-option__check {
+  display: grid;
+}
+
+.style-option--orange
+.style-option__icon {
+  background:
+    var(--gradient-orange);
+}
+
+.style-option--purple
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #9e6aff,
+      #6d2ce8
+    );
+}
+
+.style-option--pink
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #ff72bc,
+      #f62e87
+    );
+}
+
+.style-option--rose
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #ff9fbf,
+      #dd527f
+    );
+}
+
+.style-option--cyan
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #41daed,
+      #079ab9
+    );
+}
+
+.style-option--green
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #44d89a,
+      #0b9865
+    );
+}
+
+.style-option--blue
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #64a0ff,
+      #2563eb
+    );
+}
+
+.style-option--violet
+.style-option__icon {
+  background:
+    linear-gradient(
+      135deg,
+      #b16cff,
+      #7924e5
+    );
+}
+
+.style-selector__moods {
+  margin-top: 25px;
+  padding-top: 22px;
+
+  border-top:
+    1px solid
+    var(--color-border);
+}
+
+.style-selector__moods label {
+  display: block;
+
+  color: var(--color-heading);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.style-selector__mood-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-top: 11px;
+}
+
+.style-selector__mood-list button {
+  padding: 8px 12px;
+
+  color: var(--color-muted);
+  background:
+    var(--color-surface-soft);
+
+  border:
+    1px solid transparent;
+
+  border-radius:
+    var(--radius-round);
+
+  cursor: pointer;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  text-transform: capitalize;
+}
+
+.style-selector__mood-list
+button.active {
+  color: #ffffff;
+
+  background:
+    var(--gradient-brand);
+}
+
+@media (max-width: 600px) {
+  .style-selector {
+    padding: 19px;
+  }
+
+  .style-selector__grid {
+    grid-template-columns: 1fr;
+  }
+}

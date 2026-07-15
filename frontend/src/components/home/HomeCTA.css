@@ -1,0 +1,185 @@
+.home-cta {
+  padding-top: 60px;
+}
+
+.home-cta__card {
+  position: relative;
+
+  min-height: 430px;
+
+  display: grid;
+  justify-items: center;
+  align-content: center;
+
+  padding: 65px 30px;
+
+  overflow: hidden;
+
+  color: #ffffff;
+  text-align: center;
+
+  background:
+    radial-gradient(
+      circle at 12% 15%,
+      rgba(255, 210, 70, 0.36),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 88% 80%,
+      rgba(64, 223, 242, 0.25),
+      transparent 30%
+    ),
+    var(--gradient-brand);
+
+  background-size: 180% 180%;
+
+  border-radius:
+    var(--radius-xl);
+
+  box-shadow:
+    0 35px 80px
+    rgba(124, 60, 255, 0.25);
+
+  animation:
+    gradientMove 8s ease infinite;
+}
+
+.home-cta__shape {
+  position: absolute;
+  display: block;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.28);
+
+  border-radius: 50%;
+}
+
+.home-cta__shape--one {
+  width: 180px;
+  height: 180px;
+
+  top: -80px;
+  left: -50px;
+}
+
+.home-cta__shape--two {
+  width: 250px;
+  height: 250px;
+
+  right: -105px;
+  bottom: -110px;
+}
+
+.home-cta__shape--three {
+  width: 95px;
+  height: 95px;
+
+  right: 12%;
+  top: 15%;
+}
+
+.home-cta__icon {
+  width: 64px;
+  height: 64px;
+
+  display: grid;
+  place-items: center;
+
+  margin-bottom: 18px;
+
+  color: var(--color-primary);
+
+  background: #ffffff;
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 15px 30px
+    rgba(43, 13, 64, 0.23);
+
+  animation:
+    floatUpDown 4s ease-in-out
+    infinite;
+}
+
+.home-cta__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.home-cta h2 {
+  max-width: 850px;
+  margin-top: 17px;
+
+  font-family:
+    var(--font-heading);
+
+  font-size:
+    clamp(
+      2.2rem,
+      5.5vw,
+      4.4rem
+    );
+
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+.home-cta h2 span {
+  color: #ffe96b;
+}
+
+.home-cta p {
+  max-width: 630px;
+  margin-top: 18px;
+
+  color:
+    rgba(255, 255, 255, 0.83);
+
+  font-size: 1rem;
+}
+
+.home-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+
+  margin-top: 30px;
+}
+
+.home-cta__ghost-button {
+  color: #ffffff;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.4);
+}
+
+.home-cta__ghost-button:hover {
+  background:
+    rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 560px) {
+  .home-cta__card {
+    min-height: 480px;
+  }
+
+  .home-cta__actions {
+    width: 100%;
+    display: grid;
+  }
+
+  .home-cta__actions
+  .app-button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,31 @@
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-logo__icon {
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+  background: var(--gradient-brand);
+  border-radius: 13px;
+  box-shadow: var(--shadow-orange);
+}
+
+.app-logo__text {
+  color: var(--color-heading);
+  font-family: var(--font-heading);
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.app-logo__text strong {
+  margin-left: 4px;
+  color: var(--color-primary);
+}

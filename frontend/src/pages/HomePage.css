@@ -1,0 +1,11 @@
+.home-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-page .section {
+  scroll-margin-top:
+    calc(
+      var(--navbar-height) + 20px
+    );
+}
