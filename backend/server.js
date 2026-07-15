@@ -10,17 +10,34 @@ require("dotenv").config();
 |--------------------------------------------------------------------------
 */
 
-const templateRoutes = require("./routes/templateRoutes");
-const designRoutes = require("./routes/designRoutes");
-const assetRoutes = require("./routes/assetRoutes");
+const templateRoutes = require(
+  "./routes/templateRoutes"
+);
+
+const designRoutes = require(
+  "./routes/designRoutes"
+);
+
+const assetRoutes = require(
+  "./routes/assetRoutes"
+);
+
 const backgroundRemovalRoutes = require(
   "./routes/backgroundRemovalRoutes"
 );
-const exportRoutes = require("./routes/exportRoutes");
-const aiRoutes = require("./routes/aiRoutes");
+
+const exportRoutes = require(
+  "./routes/exportRoutes"
+);
+
+const aiRoutes = require(
+  "./routes/aiRoutes"
+);
+
 const variationRoutes = require(
   "./routes/variationRoutes"
 );
+
 const previewRoutes = require(
   "./routes/previewRoutes"
 );
@@ -33,14 +50,20 @@ const app = express();
 |--------------------------------------------------------------------------
 */
 
-const PORT = Number(process.env.PORT) || 5000;
+const PORT =
+  Number(process.env.PORT) || 5000;
+
+const HOST =
+  process.env.HOST || "0.0.0.0";
 
 const FRONTEND_URL =
   process.env.FRONTEND_URL ||
   "http://localhost:5173";
 
 const MAX_UPLOAD_SIZE_MB =
-  Number(process.env.MAX_UPLOAD_SIZE_MB) || 10;
+  Number(
+    process.env.MAX_UPLOAD_SIZE_MB
+  ) || 10;
 
 const MAX_EXPORT_BODY_SIZE_MB =
   Number(
@@ -52,18 +75,13 @@ const SUPABASE_ASSETS_BUCKET =
   "smartwish-assets";
 
 const NODE_ENV =
-  process.env.NODE_ENV || "development";
+  process.env.NODE_ENV ||
+  "development";
 
 /*
 |--------------------------------------------------------------------------
-| Required directories
+| Required local directories
 |--------------------------------------------------------------------------
-|
-| These local folders are created automatically.
-|
-| In production, permanent assets are stored in Supabase Storage.
-| These folders can still be used for temporary/generated files.
-|
 */
 
 const UPLOADS_DIRECTORY = path.join(
@@ -83,45 +101,44 @@ const PREVIEWS_DIRECTORY = path.join(
   "previews"
 );
 
-
-
 const requiredDirectories = [
   UPLOADS_DIRECTORY,
   GENERATED_DIRECTORY,
   PREVIEWS_DIRECTORY,
 ];
 
-requiredDirectories.forEach((directory) => {
-  if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory, {
-      recursive: true,
-    });
+requiredDirectories.forEach(
+  (directory) => {
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, {
+        recursive: true,
+      });
 
-    console.log(
-      `Created directory: ${directory}`
-    );
+      console.log(
+        `Created directory: ${directory}`
+      );
+    }
   }
-});
+);
 
 /*
 |--------------------------------------------------------------------------
 | Allowed frontend origins
 |--------------------------------------------------------------------------
 |
-| FRONTEND_URL can contain one URL:
+| Multiple origins can be separated using commas:
 |
-| FRONTEND_URL=https://smartwish-ai.vercel.app
-|
-| It can also contain multiple comma-separated URLs:
-|
-| FRONTEND_URL=https://site.vercel.app,https://site.com
+| FRONTEND_URL=https://site.com,http://localhost:5173
 |
 */
 
-const deployedFrontendOrigins = FRONTEND_URL
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const deployedFrontendOrigins =
+  FRONTEND_URL
+    .split(",")
+    .map((origin) =>
+      origin.trim()
+    )
+    .filter(Boolean);
 
 const allowedOrigins = Array.from(
   new Set([
@@ -133,7 +150,7 @@ const allowedOrigins = Array.from(
 
 /*
 |--------------------------------------------------------------------------
-| CORS configuration
+| CORS
 |--------------------------------------------------------------------------
 */
 
@@ -141,24 +158,37 @@ app.use(
   cors({
     origin(origin, callback) {
       /*
-       * Browser address-bar requests, Postman requests and
-       * server-to-server requests may not include an Origin header.
+       * Postman, direct browser navigation and server requests
+       * may not include an Origin header.
        */
       if (!origin) {
-        return callback(null, true);
+        return callback(
+          null,
+          true
+        );
       }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      if (
+        allowedOrigins.includes(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
       }
 
-      const corsError = new Error(
-        `CORS blocked request from origin: ${origin}`
-      );
+      const corsError =
+        new Error(
+          `CORS blocked request from origin: ${origin}`
+        );
 
       corsError.statusCode = 403;
 
-      return callback(corsError);
+      return callback(
+        corsError
+      );
     },
 
     methods: [
@@ -182,7 +212,6 @@ app.use(
     ],
 
     credentials: false,
-
     optionsSuccessStatus: 204,
   })
 );
@@ -191,11 +220,6 @@ app.use(
 |--------------------------------------------------------------------------
 | Request body parsers
 |--------------------------------------------------------------------------
-|
-| JSON is used for designs, template settings and Base64 exports.
-|
-| Multipart image uploads are handled separately by Multer.
-|
 */
 
 app.use(
@@ -213,33 +237,28 @@ app.use(
 
 /*
 |--------------------------------------------------------------------------
-| Static public folders
+| Static folders
 |--------------------------------------------------------------------------
-|
-| Local files can be accessed through:
-|
-| /generated/filename.png
-| /previews/filename.webp
-|
 */
 
 app.use(
   "/generated",
-  express.static(GENERATED_DIRECTORY)
+  express.static(
+    GENERATED_DIRECTORY
+  )
 );
 
 app.use(
   "/previews",
-  express.static(PREVIEWS_DIRECTORY)
+  express.static(
+    PREVIEWS_DIRECTORY
+  )
 );
 
 /*
 |--------------------------------------------------------------------------
 | Request logger
 |--------------------------------------------------------------------------
-|
-| This must appear before the API routes so every API request is logged.
-|
 */
 
 app.use((req, res, next) => {
@@ -264,29 +283,34 @@ app.get("/", (req, res) => {
     success: true,
     message:
       "SmartWish AI backend is running.",
-    service: "SmartWish AI Backend",
+    service:
+      "SmartWish AI Backend",
     version: "2.0.0",
   });
 });
 
-app.get("/api/health", (req, res) => {
-  return res.status(200).json({
-    success: true,
-    status: "healthy",
-    service: "SmartWish AI Backend",
-    version: "2.0.0",
-    environment: NODE_ENV,
-    timestamp: new Date().toISOString(),
-  });
-});
+app.get(
+  "/api/health",
+  (req, res) => {
+    return res
+      .status(200)
+      .json({
+        success: true,
+        status: "healthy",
+        service:
+          "SmartWish AI Backend",
+        version: "2.0.0",
+        environment: NODE_ENV,
+        timestamp:
+          new Date().toISOString(),
+      });
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
-| Application API routes
+| Application routes
 |--------------------------------------------------------------------------
-|
-| Keep all API route registrations together.
-|
 */
 
 app.use(
@@ -333,273 +357,313 @@ app.use(
 |--------------------------------------------------------------------------
 | 404 handler
 |--------------------------------------------------------------------------
-|
-| This executes only when no previous route matches.
-|
 */
 
 app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    error: "API endpoint not found.",
-    method: req.method,
-    path: req.originalUrl,
-  });
+  return res
+    .status(404)
+    .json({
+      success: false,
+      error:
+        "API endpoint not found.",
+      method: req.method,
+      path: req.originalUrl,
+    });
 });
 
 /*
 |--------------------------------------------------------------------------
 | Global error handler
 |--------------------------------------------------------------------------
-|
-| This must remain after all application routes and the 404 handler.
-|
-| Express recognises an error handler because it contains four parameters:
-|
-| error, req, res, next
-|
 */
 
-app.use((error, req, res, next) => {
-  console.error("Server error:", error);
+app.use(
+  (error, req, res, next) => {
+    console.error(
+      "Server error:",
+      error
+    );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Prevent duplicate responses
-  |--------------------------------------------------------------------------
-  */
-
-  if (res.headersSent) {
-    return next(error);
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Multer upload errors
-  |--------------------------------------------------------------------------
-  */
-
-  if (error.name === "MulterError") {
-    if (
-      error.code === "LIMIT_FILE_SIZE"
-    ) {
-      return res.status(413).json({
-        success: false,
-        error: `Image size must not exceed ${MAX_UPLOAD_SIZE_MB} MB.`,
-      });
+    if (res.headersSent) {
+      return next(error);
     }
 
-    if (
-      error.code === "LIMIT_FILE_COUNT"
-    ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Only one image can be uploaded at a time.",
-      });
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Multer errors
+    |--------------------------------------------------------------------------
+    */
 
     if (
-      error.code ===
-      "LIMIT_UNEXPECTED_FILE"
+      error.name ===
+      "MulterError"
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Unexpected upload field. The image field must be named 'image'.",
-      });
+      if (
+        error.code ===
+        "LIMIT_FILE_SIZE"
+      ) {
+        return res
+          .status(413)
+          .json({
+            success: false,
+            error:
+              `Image size must not exceed ${MAX_UPLOAD_SIZE_MB} MB.`,
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_FILE_COUNT"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "Only one image can be uploaded at a time.",
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_UNEXPECTED_FILE"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "Unexpected upload field. The image field must be named 'image'.",
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_FIELD_KEY"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "One of the upload field names is too long.",
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_FIELD_VALUE"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "One of the upload field values is too large.",
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_FIELD_COUNT"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "Too many form fields were submitted.",
+          });
+      }
+
+      if (
+        error.code ===
+        "LIMIT_PART_COUNT"
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error:
+              "Too many multipart sections were submitted.",
+          });
+      }
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error:
+            error.message ||
+            "Image upload failed.",
+        });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CORS errors
+    |--------------------------------------------------------------------------
+    */
 
     if (
-      error.code === "LIMIT_FIELD_KEY"
+      error.message?.startsWith(
+        "CORS blocked"
+      )
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "One of the upload field names is too long.",
-      });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error:
+            error.message,
+        });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Invalid JSON
+    |--------------------------------------------------------------------------
+    */
 
     if (
-      error.code === "LIMIT_FIELD_VALUE"
+      error instanceof
+        SyntaxError &&
+      error.status === 400 &&
+      "body" in error
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "One of the upload field values is too large.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error:
+            "The request contains invalid JSON.",
+        });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payload too large
+    |--------------------------------------------------------------------------
+    */
 
     if (
-      error.code === "LIMIT_FIELD_COUNT"
+      error.type ===
+        "entity.too.large" ||
+      error.status === 413
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Too many form fields were submitted.",
-      });
+      return res
+        .status(413)
+        .json({
+          success: false,
+          error:
+            `The submitted request is too large. Maximum request size is ${MAX_EXPORT_BODY_SIZE_MB} MB.`,
+        });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Supabase configuration
+    |--------------------------------------------------------------------------
+    */
 
     if (
-      error.code === "LIMIT_PART_COUNT"
+      error.message?.includes(
+        "SUPABASE_URL"
+      ) ||
+      error.message?.includes(
+        "SUPABASE_SERVICE_ROLE_KEY"
+      )
     ) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Too many multipart form sections were submitted.",
-      });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          error:
+            NODE_ENV ===
+            "production"
+              ? "Database configuration is unavailable."
+              : error.message,
+        });
     }
 
-    return res.status(400).json({
+    /*
+    |--------------------------------------------------------------------------
+    | Cloudflare configuration
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      error.message?.includes(
+        "CLOUDFLARE_ACCOUNT_ID"
+      ) ||
+      error.message?.includes(
+        "CLOUDFLARE_API_TOKEN"
+      )
+    ) {
+      return res
+        .status(500)
+        .json({
+          success: false,
+          error:
+            NODE_ENV ===
+            "production"
+              ? "AI service configuration is unavailable."
+              : error.message,
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | General errors
+    |--------------------------------------------------------------------------
+    */
+
+    const requestedStatusCode =
+      Number(
+        error.statusCode ||
+          error.status
+      );
+
+    const safeStatusCode =
+      Number.isInteger(
+        requestedStatusCode
+      ) &&
+      requestedStatusCode >=
+        400 &&
+      requestedStatusCode <=
+        599
+        ? requestedStatusCode
+        : 500;
+
+    const isProduction =
+      NODE_ENV ===
+      "production";
+
+    const errorMessage =
+      safeStatusCode === 500 &&
+      isProduction
+        ? "Something went wrong on the server."
+        : error.message ||
+          "Something went wrong on the server.";
+
+    const responseBody = {
       success: false,
-      error:
-        error.message ||
-        "Image upload failed.",
-    });
+      error: errorMessage,
+    };
+
+    if (
+      !isProduction &&
+      error.stack
+    ) {
+      responseBody.stack =
+        error.stack;
+    }
+
+    return res
+      .status(safeStatusCode)
+      .json(responseBody);
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | CORS errors
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    error.message?.startsWith(
-      "CORS blocked"
-    )
-  ) {
-    return res.status(403).json({
-      success: false,
-      error: error.message,
-    });
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Invalid JSON request
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    error instanceof SyntaxError &&
-    error.status === 400 &&
-    "body" in error
-  ) {
-    return res.status(400).json({
-      success: false,
-      error:
-        "The request contains invalid JSON.",
-    });
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Request payload too large
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    error.type === "entity.too.large" ||
-    error.status === 413
-  ) {
-    return res.status(413).json({
-      success: false,
-      error: `The submitted request is too large. Maximum request size is ${MAX_EXPORT_BODY_SIZE_MB} MB.`,
-    });
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Supabase configuration errors
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    error.message?.includes(
-      "SUPABASE_URL"
-    ) ||
-    error.message?.includes(
-      "SUPABASE_SERVICE_ROLE_KEY"
-    )
-  ) {
-    return res.status(500).json({
-      success: false,
-
-      error:
-        NODE_ENV === "production"
-          ? "Database configuration is unavailable."
-          : error.message,
-    });
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Cloudflare AI configuration errors
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    error.message?.includes(
-      "CLOUDFLARE_ACCOUNT_ID"
-    ) ||
-    error.message?.includes(
-      "CLOUDFLARE_API_TOKEN"
-    )
-  ) {
-    return res.status(500).json({
-      success: false,
-
-      error:
-        NODE_ENV === "production"
-          ? "AI service configuration is unavailable."
-          : error.message,
-    });
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | General application errors
-  |--------------------------------------------------------------------------
-  */
-
-  const requestedStatusCode = Number(
-    error.statusCode || error.status
-  );
-
-  const safeStatusCode =
-    Number.isInteger(requestedStatusCode) &&
-    requestedStatusCode >= 400 &&
-    requestedStatusCode <= 599
-      ? requestedStatusCode
-      : 500;
-
-  const isProduction =
-    NODE_ENV === "production";
-
-  const errorMessage =
-    safeStatusCode === 500 &&
-    isProduction
-      ? "Something went wrong on the server."
-      : error.message ||
-        "Something went wrong on the server.";
-
-  const responseBody = {
-    success: false,
-    error: errorMessage,
-  };
-
-  if (
-    !isProduction &&
-    error.stack
-  ) {
-    responseBody.stack = error.stack;
-  }
-
-  return res
-    .status(safeStatusCode)
-    .json(responseBody);
-});
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -607,53 +671,54 @@ app.use((error, req, res, next) => {
 |--------------------------------------------------------------------------
 */
 
-const server = app.listen(PORT, () => {
-  console.log("");
-  console.log(
-    "======================================"
-  );
-  console.log(
-    " SmartWish AI Backend"
-  );
-  console.log(
-    "======================================"
-  );
-  console.log(
-    `Server: http://localhost:${PORT}`
-  );
-  console.log(
-    `Health: http://localhost:${PORT}/api/health`
-  );
-  console.log(
-    `Environment: ${NODE_ENV}`
-  );
-  console.log(
-    `Frontend origins: ${allowedOrigins.join(
-      ", "
-    )}`
-  );
-  console.log(
-    `Maximum upload size: ${MAX_UPLOAD_SIZE_MB} MB`
-  );
-  console.log(
-    `Maximum request size: ${MAX_EXPORT_BODY_SIZE_MB} MB`
-  );
-  console.log(
-    `Assets bucket: ${SUPABASE_ASSETS_BUCKET}`
-  );
-  console.log(
-    "======================================"
-  );
-  console.log("");
-});
+const server = app.listen(
+  PORT,
+  HOST,
+  () => {
+    console.log("");
+    console.log(
+      "======================================"
+    );
+    console.log(
+      " SmartWish AI Backend"
+    );
+    console.log(
+      "======================================"
+    );
+    console.log(
+      `Server: http://${HOST}:${PORT}`
+    );
+    console.log(
+      `Health: http://localhost:${PORT}/api/health`
+    );
+    console.log(
+      `Environment: ${NODE_ENV}`
+    );
+    console.log(
+      `Frontend origins: ${allowedOrigins.join(
+        ", "
+      )}`
+    );
+    console.log(
+      `Maximum upload size: ${MAX_UPLOAD_SIZE_MB} MB`
+    );
+    console.log(
+      `Maximum request size: ${MAX_EXPORT_BODY_SIZE_MB} MB`
+    );
+    console.log(
+      `Assets bucket: ${SUPABASE_ASSETS_BUCKET}`
+    );
+    console.log(
+      "======================================"
+    );
+    console.log("");
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
-| Graceful server shutdown
+| Graceful shutdown
 |--------------------------------------------------------------------------
-|
-| Helps the application close safely during deployment restarts.
-|
 */
 
 function shutdownServer(signal) {
@@ -679,12 +744,22 @@ function shutdownServer(signal) {
   });
 }
 
-process.on("SIGTERM", () => {
-  shutdownServer("SIGTERM");
-});
+process.on(
+  "SIGTERM",
+  () => {
+    shutdownServer(
+      "SIGTERM"
+    );
+  }
+);
 
-process.on("SIGINT", () => {
-  shutdownServer("SIGINT");
-});
+process.on(
+  "SIGINT",
+  () => {
+    shutdownServer(
+      "SIGINT"
+    );
+  }
+);
 
 module.exports = app;

@@ -1,6 +1,37 @@
-const path = require("path");
 const crypto = require("crypto");
-const sharp = require("sharp");
+const path = require("path");
+
+/*
+|--------------------------------------------------------------------------
+| Supported asset types
+|--------------------------------------------------------------------------
+|
+| Keep only one allowedAssetTypes declaration in this file.
+|
+*/
+
+const allowedAssetTypes = new Set([
+  "student-photo",
+  "removed-background",
+  "college-logo",
+  "background",
+  "ai-background",
+  "editor-upload",
+  "thumbnail",
+  "export-png",
+  "export-jpeg",
+  "export-webp",
+  "export-pdf",
+]);
+
+/*
+|--------------------------------------------------------------------------
+| Asset storage folders
+|--------------------------------------------------------------------------
+|
+| Keep only one folderMap declaration in this file.
+|
+*/
 
 const folderMap = {
   "student-photo": "student-photos",
@@ -16,23 +47,36 @@ const folderMap = {
   "export-pdf": "exports/pdf",
 };
 
-const folderMap = {
-  "student-photo": "student-photos",
-  "removed-background": "removed-backgrounds",
-  "college-logo": "college-logos",
-  background: "backgrounds",
-  "editor-upload": "editor-uploads",
-  thumbnail: "thumbnails",
-  "export-png": "exports/png",
-  "export-jpeg": "exports/jpeg",
-  "export-webp": "exports/webp",
-  "export-pdf": "exports/pdf",
+/*
+|--------------------------------------------------------------------------
+| Extension and MIME-type configuration
+|--------------------------------------------------------------------------
+*/
+
+const extensionMimeTypeMap = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  pdf: "application/pdf",
 };
 
-function validateAssetType(assetType) {
-  if (!allowedAssetTypes.has(assetType)) {
+/*
+|--------------------------------------------------------------------------
+| Validate asset type
+|--------------------------------------------------------------------------
+*/
+
+function normalizeAssetType(assetType) {
+  const normalizedAssetType = String(
+    assetType || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!allowedAssetTypes.has(normalizedAssetType)) {
     const error = new Error(
-      "Invalid asset type. Allowed values are student-photo, college-logo, background, editor-upload and thumbnail."
+      `Invalid asset type: ${normalizedAssetType || "empty value"}.`
     );
 
     error.statusCode = 400;
@@ -40,63 +84,194 @@ function validateAssetType(assetType) {
     throw error;
   }
 
-  return assetType;
+  return normalizedAssetType;
 }
 
-function sanitiseOwnerKey(ownerKey) {
-  const normalisedOwnerKey = String(
-    ownerKey || "guest"
+/*
+|--------------------------------------------------------------------------
+| Sanitize path segment
+|--------------------------------------------------------------------------
+|
+| This prevents unsafe characters from entering storage paths.
+|
+*/
+
+function sanitizePathSegment(value, fallback = "item") {
+  const sanitizedValue = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-_]+|[-_]+$/g, "")
+    .slice(0, 100);
+
+  return sanitizedValue || fallback;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sanitize original filename
+|--------------------------------------------------------------------------
+*/
+
+function sanitizeOriginalFileName(
+  originalName,
+  fallback = "asset"
+) {
+  const parsedName = path.parse(
+    String(originalName || fallback)
+  );
+
+  return sanitizePathSegment(
+    parsedName.name,
+    fallback
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Normalize extension
+|--------------------------------------------------------------------------
+*/
+
+function normalizeExtension(extension) {
+  const normalizedExtension = String(
+    extension || ""
   )
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/^\./, "");
 
-  return normalisedOwnerKey || "guest";
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      extensionMimeTypeMap,
+      normalizedExtension
+    )
+  ) {
+    const error = new Error(
+      `Unsupported file extension: ${
+        normalizedExtension || "empty value"
+      }.`
+    );
+
+    error.statusCode = 400;
+
+    throw error;
+  }
+
+  return normalizedExtension;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Get extension from MIME type
+|--------------------------------------------------------------------------
+*/
+
+function getExtensionFromMimeType(mimeType) {
+  const normalizedMimeType = String(
+    mimeType || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const extensionEntry = Object.entries(
+    extensionMimeTypeMap
+  ).find(
+    ([extension, mappedMimeType]) =>
+      mappedMimeType === normalizedMimeType &&
+      extension !== "jpeg"
+  );
+
+  if (!extensionEntry) {
+    const error = new Error(
+      `Unsupported MIME type: ${
+        normalizedMimeType || "empty value"
+      }.`
+    );
+
+    error.statusCode = 400;
+
+    throw error;
+  }
+
+  return extensionEntry[0];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get MIME type from extension
+|--------------------------------------------------------------------------
+*/
+
+function getMimeTypeFromExtension(extension) {
+  const normalizedExtension =
+    normalizeExtension(extension);
+
+  return extensionMimeTypeMap[
+    normalizedExtension
+  ];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Create unique asset filename
+|--------------------------------------------------------------------------
+|
+| Example:
+|
+| 1784123456789-a1b2c3d4-student-photo.webp
+|
+*/
 
 function createAssetFileName({
-  originalName,
+  originalName = "asset",
   extension = "webp",
 }) {
-  const originalBaseName = path
-    .parse(originalName || "image")
-    .name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
+  const safeName =
+    sanitizeOriginalFileName(
+      originalName,
+      "asset"
+    );
 
-  const safeBaseName =
-    originalBaseName || "image";
+  const safeExtension =
+    normalizeExtension(extension);
 
-  const randomId = crypto
-    .randomBytes(8)
+  const uniqueId = crypto
+    .randomBytes(6)
     .toString("hex");
 
-  return `${Date.now()}-${randomId}-${safeBaseName}.${extension}`;
+  return `${Date.now()}-${uniqueId}-${safeName}.${safeExtension}`;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Create Supabase storage path
+|--------------------------------------------------------------------------
+|
+| Example:
+|
+| student-photos/guest-user/file.webp
+|
+*/
 
 function createAssetStoragePath({
   assetType,
   ownerKey,
   fileName,
 }) {
-  validateAssetType(assetType);
-
-  const folder = folderMap[assetType];
+  const normalizedAssetType =
+    normalizeAssetType(assetType);
 
   const safeOwnerKey =
-    sanitiseOwnerKey(ownerKey);
+    sanitizePathSegment(
+      ownerKey,
+      "anonymous"
+    );
 
-  return `${folder}/${safeOwnerKey}/${fileName}`;
-}
-
-async function inspectImage(imageBuffer) {
-  if (!Buffer.isBuffer(imageBuffer)) {
+  if (!fileName) {
     const error = new Error(
-      "Uploaded image buffer is missing."
+      "fileName is required when creating an asset storage path."
     );
 
     error.statusCode = 400;
@@ -104,39 +279,42 @@ async function inspectImage(imageBuffer) {
     throw error;
   }
 
-  try {
-    const metadata = await sharp(
-      imageBuffer
-    ).metadata();
+  const safeFileName = path
+    .basename(String(fileName))
+    .replace(/[^a-zA-Z0-9._-]/g, "-");
 
-    if (
-      !metadata.width ||
-      !metadata.height
-    ) {
-      throw new Error(
-        "Image dimensions could not be detected."
-      );
-    }
+  const folder =
+    folderMap[normalizedAssetType];
 
-    return metadata;
-  } catch {
-    const error = new Error(
-      "The uploaded file is not a valid image."
-    );
-
-    error.statusCode = 400;
-
-    throw error;
-  }
+  return `${folder}/${safeOwnerKey}/${safeFileName}`;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Image resize configuration
+|--------------------------------------------------------------------------
+*/
 
 function getResizeOptions(assetType) {
-  switch (assetType) {
+  const normalizedAssetType =
+    normalizeAssetType(assetType);
+
+  switch (normalizedAssetType) {
     case "student-photo":
       return {
         width: 1800,
         height: 2200,
         fit: "inside",
+        position: "centre",
+        withoutEnlargement: true,
+      };
+
+    case "removed-background":
+      return {
+        width: 1800,
+        height: 2200,
+        fit: "inside",
+        position: "centre",
         withoutEnlargement: true,
       };
 
@@ -145,101 +323,95 @@ function getResizeOptions(assetType) {
         width: 1200,
         height: 1200,
         fit: "inside",
+        position: "centre",
         withoutEnlargement: true,
       };
 
     case "background":
       return {
-        width: 2560,
-        height: 3200,
-        fit: "inside",
-        withoutEnlargement: true,
+        width: 2160,
+        height: 2700,
+        fit: "cover",
+        position: "centre",
+        withoutEnlargement: false,
       };
 
-    case "thumbnail":
+    case "ai-background":
       return {
-        width: 540,
-        height: 675,
+        width: 1536,
+        height: 1920,
         fit: "cover",
         position: "centre",
         withoutEnlargement: false,
       };
 
     case "editor-upload":
-    default:
       return {
-        width: 2200,
-        height: 2200,
+        width: 2160,
+        height: 2700,
         fit: "inside",
+        position: "centre",
         withoutEnlargement: true,
       };
-      case "removed-background":
-  return {
-    width: 1800,
-    height: 2200,
-    fit: "inside",
-    withoutEnlargement: true,
-  };
 
-  case "ai-background":
-  return {
-    width: 1536,
-    height: 1920,
-    fit: "cover",
-    position: "centre",
-    withoutEnlargement: false,
-  };
-  
+    case "thumbnail":
+      return {
+        width: 720,
+        height: 900,
+        fit: "cover",
+        position: "centre",
+        withoutEnlargement: false,
+      };
+
+    /*
+     * Export assets are already rendered at the requested
+     * dimensions. They should not be resized here.
+     */
+    case "export-png":
+    case "export-jpeg":
+    case "export-webp":
+    case "export-pdf":
+      return null;
+
+    default:
+      return null;
   }
 }
 
-async function optimiseImage({
-  imageBuffer,
-  assetType,
-}) {
-  validateAssetType(assetType);
+/*
+|--------------------------------------------------------------------------
+| Check whether asset is an image
+|--------------------------------------------------------------------------
+*/
 
-  await inspectImage(imageBuffer);
+function isImageAssetType(assetType) {
+  const normalizedAssetType =
+    normalizeAssetType(assetType);
 
-  const resizeOptions =
-    getResizeOptions(assetType);
-
-  const processingPipeline = sharp(
-    imageBuffer,
-    {
-      failOn: "error",
-    }
-  )
-    .rotate()
-    .resize(resizeOptions);
-
-  if (assetType === "college-logo") {
-    return processingPipeline
-      .webp({
-        quality: 92,
-        alphaQuality: 100,
-        effort: 5,
-      })
-      .toBuffer({
-        resolveWithObject: true,
-      });
-  }
-
-  return processingPipeline
-    .webp({
-      quality: 88,
-      alphaQuality: 95,
-      effort: 5,
-    })
-    .toBuffer({
-      resolveWithObject: true,
-    });
+  return normalizedAssetType !== "export-pdf";
 }
+
+/*
+|--------------------------------------------------------------------------
+| Public exports
+|--------------------------------------------------------------------------
+*/
 
 module.exports = {
-  validateAssetType,
+  allowedAssetTypes,
+  folderMap,
+  extensionMimeTypeMap,
+
+  normalizeAssetType,
+  sanitizePathSegment,
+  sanitizeOriginalFileName,
+  normalizeExtension,
+
+  getExtensionFromMimeType,
+  getMimeTypeFromExtension,
+
   createAssetFileName,
   createAssetStoragePath,
-  inspectImage,
-  optimiseImage,
+  getResizeOptions,
+  isImageAssetType,
 };
