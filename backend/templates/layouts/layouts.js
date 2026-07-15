@@ -1,0 +1,262 @@
+const layouts = [
+  {
+    id: "center-portrait",
+    name: "Center Portrait",
+    category: "cinematic",
+    tags: ["portrait", "center", "premium"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 190,
+      y: 250,
+      width: 700,
+      height: 900,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 90,
+      y: 75,
+      width: 900,
+      align: "center",
+    },
+    name: {
+      x: 90,
+      y: 1110,
+      width: 900,
+      align: "center",
+    },
+    details: {
+      x: 120,
+      y: 1195,
+      width: 840,
+      align: "center",
+    },
+    quote: {
+      x: 130,
+      y: 1250,
+      width: 820,
+      align: "center",
+    },
+  },
+
+  {
+    id: "left-portrait",
+    name: "Left Portrait",
+    category: "magazine",
+    tags: ["portrait", "left", "editorial"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 30,
+      y: 260,
+      width: 650,
+      height: 1030,
+      rotation: 0,
+      align: "left",
+    },
+    heading: {
+      x: 610,
+      y: 110,
+      width: 390,
+      align: "left",
+    },
+    name: {
+      x: 610,
+      y: 580,
+      width: 390,
+      align: "left",
+    },
+    details: {
+      x: 610,
+      y: 760,
+      width: 390,
+      align: "left",
+    },
+    quote: {
+      x: 610,
+      y: 920,
+      width: 390,
+      align: "left",
+    },
+  },
+
+  {
+    id: "right-portrait",
+    name: "Right Portrait",
+    category: "modern",
+    tags: ["portrait", "right", "modern"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 400,
+      y: 260,
+      width: 650,
+      height: 1030,
+      rotation: 0,
+      align: "right",
+    },
+    heading: {
+      x: 70,
+      y: 110,
+      width: 430,
+      align: "left",
+    },
+    name: {
+      x: 70,
+      y: 560,
+      width: 430,
+      align: "left",
+    },
+    details: {
+      x: 70,
+      y: 740,
+      width: 430,
+      align: "left",
+    },
+    quote: {
+      x: 70,
+      y: 900,
+      width: 430,
+      align: "left",
+    },
+  },
+
+  {
+    id: "full-photo",
+    name: "Full Photo",
+    category: "luxury",
+    tags: ["full-photo", "bold", "luxury"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 120,
+      y: 180,
+      width: 840,
+      height: 1150,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 70,
+      y: 55,
+      width: 940,
+      align: "center",
+    },
+    name: {
+      x: 70,
+      y: 1080,
+      width: 940,
+      align: "center",
+    },
+    details: {
+      x: 100,
+      y: 1180,
+      width: 880,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1250,
+      width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "split-diagonal",
+    name: "Split Diagonal",
+    category: "creative",
+    tags: ["diagonal", "creative", "dynamic"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 340,
+      y: 300,
+      width: 720,
+      height: 1000,
+      rotation: -3,
+      align: "right",
+    },
+    heading: {
+      x: 65,
+      y: 80,
+      width: 700,
+      align: "left",
+    },
+    name: {
+      x: 65,
+      y: 780,
+      width: 600,
+      align: "left",
+    },
+    details: {
+      x: 65,
+      y: 940,
+      width: 500,
+      align: "left",
+    },
+    quote: {
+      x: 65,
+      y: 1080,
+      width: 500,
+      align: "left",
+    },
+  },
+
+  {
+    id: "circle-frame",
+    name: "Circle Frame",
+    category: "floral",
+    tags: ["circle", "soft", "elegant"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 190,
+      y: 280,
+      width: 700,
+      height: 700,
+      shape: "circle",
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 90,
+      y: 85,
+      width: 900,
+      align: "center",
+    },
+    name: {
+      x: 90,
+      y: 1020,
+      width: 900,
+      align: "center",
+    },
+    details: {
+      x: 120,
+      y: 1120,
+      width: 840,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1210,
+      width: 840,
+      align: "center",
+    },
+  },
+];
+
+module.exports = layouts;
