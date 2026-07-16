@@ -21,20 +21,25 @@ export async function fetchTemplates({
       params: {
         page,
         limit,
+
         search:
           search.trim() || undefined,
+
         category:
           category === "all"
             ? undefined
             : category,
+
         palette:
           palette === "all"
             ? undefined
             : palette,
+
         layout:
           layout === "all"
             ? undefined
             : layout,
+
         sortBy,
       },
     }
@@ -42,10 +47,10 @@ export async function fetchTemplates({
 
   return {
     templates:
-      response.data.templates || [],
+      response.data?.templates || [],
 
     pagination:
-      response.data.pagination || {
+      response.data?.pagination || {
         page: 1,
         limit,
         total: 0,
@@ -77,7 +82,88 @@ export async function fetchTemplateById(
     )}`
   );
 
-  return response.data.template;
+  return response.data?.template;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Normalize one filter option
+|--------------------------------------------------------------------------
+*/
+
+function normalizeFilterOption(
+  item,
+  index,
+  prefix
+) {
+  if (
+    typeof item === "string" ||
+    typeof item === "number"
+  ) {
+    return {
+      id: String(item),
+      name: String(item),
+    };
+  }
+
+  if (
+    !item ||
+    typeof item !== "object"
+  ) {
+    return {
+      id: `${prefix.toLowerCase()}-${index}`,
+      name: `${prefix} ${index + 1}`,
+    };
+  }
+
+  const rawId =
+    item.id ??
+    item.slug ??
+    item.key ??
+    item.value ??
+    `${prefix.toLowerCase()}-${index}`;
+
+  const possibleName =
+    item.name ??
+    item.label ??
+    item.title ??
+    item.displayName;
+
+  const safeName =
+    typeof possibleName === "string" ||
+    typeof possibleName === "number"
+      ? String(possibleName)
+      : `${prefix} ${index + 1}`;
+
+  return {
+    ...item,
+    id: String(rawId),
+    name: safeName,
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| Normalize one filter collection
+|--------------------------------------------------------------------------
+*/
+
+function normalizeFilterCollection(
+  collection,
+  prefix
+) {
+  if (!Array.isArray(collection)) {
+    return [];
+  }
+
+  return collection.map(
+    (item, index) =>
+      normalizeFilterOption(
+        item,
+        index,
+        prefix
+      )
+  );
 }
 
 /*
@@ -91,7 +177,36 @@ export async function fetchTemplateFilters() {
     "/templates/filters"
   );
 
-  return response.data.filters;
+  const rawFilters =
+    response.data?.filters || {};
+
+  return {
+    ...rawFilters,
+
+    categories:
+      normalizeFilterCollection(
+        rawFilters.categories,
+        "Category"
+      ),
+
+    layouts:
+      normalizeFilterCollection(
+        rawFilters.layouts,
+        "Layout"
+      ),
+
+    palettes:
+      normalizeFilterCollection(
+        rawFilters.palettes,
+        "Palette"
+      ),
+
+    typography:
+      normalizeFilterCollection(
+        rawFilters.typography,
+        "Typography"
+      ),
+  };
 }
 
 /*
@@ -104,6 +219,12 @@ export async function fetchSimilarTemplates({
   templateId,
   count = 12,
 }) {
+  if (!templateId) {
+    throw new Error(
+      "Template ID is required."
+    );
+  }
+
   const response = await api.get(
     `/templates/${encodeURIComponent(
       templateId
@@ -115,7 +236,7 @@ export async function fetchSimilarTemplates({
     }
   );
 
-  return response.data.templates || [];
+  return response.data?.templates || [];
 }
 
 /*
@@ -132,6 +253,12 @@ export async function generateTemplateVariations({
   dynamicFields,
   aiBackground,
 }) {
+  if (!templateId) {
+    throw new Error(
+      "Template ID is required."
+    );
+  }
+
   const response = await api.post(
     "/variations/generate",
     {

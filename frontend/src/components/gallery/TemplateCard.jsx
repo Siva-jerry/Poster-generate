@@ -8,70 +8,360 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import {
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
 import "./TemplateCard.css";
+
+/*
+|--------------------------------------------------------------------------
+| Convert any value into safe display text
+|--------------------------------------------------------------------------
+*/
+
+function getSafeText(value, fallback = "") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    return String(value);
+  }
+
+  return fallback;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get safe template name
+|--------------------------------------------------------------------------
+*/
+
+function getTemplateName(template) {
+  return getSafeText(
+    template?.name,
+    getSafeText(
+      template?.title,
+      "Premium Birthday Design"
+    )
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get safe category name
+|--------------------------------------------------------------------------
+*/
+
+function getCategoryName(template) {
+  const categories = template?.categories;
+
+  if (
+    Array.isArray(categories) &&
+    categories.length > 0
+  ) {
+    const firstCategory = categories[0];
+
+    if (
+      typeof firstCategory === "string" ||
+      typeof firstCategory === "number"
+    ) {
+      return String(firstCategory);
+    }
+
+    if (
+      firstCategory &&
+      typeof firstCategory === "object"
+    ) {
+      return getSafeText(
+        firstCategory.name ??
+          firstCategory.label ??
+          firstCategory.title,
+        "Premium"
+      );
+    }
+  }
+
+  const category = template?.category;
+
+  if (
+    typeof category === "string" ||
+    typeof category === "number"
+  ) {
+    return String(category);
+  }
+
+  if (
+    category &&
+    typeof category === "object"
+  ) {
+    return getSafeText(
+      category.name ??
+        category.label ??
+        category.title,
+      "Premium"
+    );
+  }
+
+  return "Premium";
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get safe layout name
+|--------------------------------------------------------------------------
+*/
+
+function getLayoutName(template) {
+  const layout =
+    template?.design?.layout ??
+    template?.layout;
+
+  if (
+    typeof layout === "string" ||
+    typeof layout === "number"
+  ) {
+    return String(layout);
+  }
+
+  if (
+    !layout ||
+    typeof layout !== "object"
+  ) {
+    return "Custom Layout";
+  }
+
+  /*
+   * Only accept text values.
+   *
+   * Never return objects such as:
+   * { x, y, width, align }
+   */
+  const possibleName =
+    layout.displayName ??
+    layout.label ??
+    layout.title ??
+    layout.id ??
+    layout.slug;
+
+  if (
+    typeof possibleName === "string" ||
+    typeof possibleName === "number"
+  ) {
+    return String(possibleName);
+  }
+
+  /*
+   * layout.name may itself be a position object.
+   */
+  if (
+    typeof layout.name === "string" ||
+    typeof layout.name === "number"
+  ) {
+    return String(layout.name);
+  }
+
+  return "Custom Layout";
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get safe palette information
+|--------------------------------------------------------------------------
+*/
+
+function getPalette(template) {
+  const palette =
+    template?.design?.palette ??
+    template?.palette ??
+    {};
+
+  return palette &&
+    typeof palette === "object"
+    ? palette
+    : {};
+}
+
+function getPaletteName(palette) {
+  return getSafeText(
+    palette?.name ??
+      palette?.label ??
+      palette?.title,
+    "Colour Palette"
+  );
+}
+
+function getPaletteColor(
+  palette,
+  key,
+  fallback
+) {
+  const color =
+    palette?.colors?.[key];
+
+  return typeof color === "string"
+    ? color
+    : fallback;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Get preview gradient colours
+|--------------------------------------------------------------------------
+*/
+
+function getGradientColors(
+  template,
+  palette
+) {
+  const previewColors =
+    template?.preview?.gradient?.colors;
+
+  const paletteColors =
+    palette?.gradient?.colors;
+
+  const source =
+    Array.isArray(previewColors) &&
+    previewColors.length > 0
+      ? previewColors
+      : Array.isArray(paletteColors) &&
+          paletteColors.length > 0
+        ? paletteColors
+        : [];
+
+  const safeColors = source.filter(
+    (color) =>
+      typeof color === "string" &&
+      color.trim()
+  );
+
+  if (safeColors.length >= 2) {
+    return safeColors;
+  }
+
+  return [
+    getPaletteColor(
+      palette,
+      "background",
+      "#15121C"
+    ),
+
+    getPaletteColor(
+      palette,
+      "primary",
+      "#FF6B1A"
+    ),
+
+    getPaletteColor(
+      palette,
+      "secondary",
+      "#7C3CFF"
+    ),
+  ];
+}
 
 function TemplateCard({
   template,
   previewUrl,
-  favourite,
+  favourite = false,
   onFavourite,
   onUseTemplate,
   onPreview,
 }) {
-  const [
-    imageLoaded,
-    setImageLoaded,
-  ] = useState(false);
+  const [imageLoaded, setImageLoaded] =
+    useState(false);
 
-  const [
-    imageFailed,
-    setImageFailed,
-  ] = useState(false);
+  const [imageFailed, setImageFailed] =
+    useState(false);
+
+  /*
+   * Reset image state when preview URL changes.
+   */
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageFailed(false);
+  }, [previewUrl]);
+
+  const templateId =
+    getSafeText(
+      template?.id,
+      `template-${Date.now()}`
+    );
+
+  const templateName =
+    getTemplateName(template);
+
+  const categoryName =
+    getCategoryName(template);
+
+  const layoutName =
+    getLayoutName(template);
 
   const palette =
-    template.design?.palette;
+    getPalette(template);
+
+  const paletteName =
+    getPaletteName(palette);
 
   const gradientColors =
-    template.preview?.gradient
-      ?.colors ||
-    palette?.gradient?.colors ||
-    [
-      palette?.colors?.background ||
-        "#111111",
+    getGradientColors(
+      template,
+      palette
+    );
 
-      palette?.colors
-        ?.backgroundSecondary ||
-        "#FF6B1A",
-    ];
+  const firstColor =
+    gradientColors[0] ||
+    "#15121C";
+
+  const middleColor =
+    gradientColors[
+      Math.floor(
+        gradientColors.length / 2
+      )
+    ] || "#FF6B1A";
+
+  const lastColor =
+    gradientColors[
+      gradientColors.length - 1
+    ] || "#7C3CFF";
 
   const fallbackBackground = {
     background: `linear-gradient(
       145deg,
-      ${gradientColors[0]},
-      ${
-        gradientColors[
-          Math.floor(
-            gradientColors.length /
-              2
-          )
-        ] || gradientColors[0]
-      },
-      ${
-        gradientColors[
-          gradientColors.length - 1
-        ]
-      }
+      ${firstColor},
+      ${middleColor},
+      ${lastColor}
     )`,
   };
 
-  const category =
-    template.categories?.[0] ||
-    template.category ||
-    "Premium";
+  const handleFavourite = (
+    event
+  ) => {
+    event.stopPropagation();
+
+    if (
+      typeof onFavourite ===
+      "function"
+    ) {
+      onFavourite(templateId);
+    }
+  };
+
+  const handlePreview = () => {
+    if (
+      typeof onPreview ===
+      "function"
+    ) {
+      onPreview(template);
+    }
+  };
+
+  const handleUseTemplate = () => {
+    if (
+      typeof onUseTemplate ===
+      "function"
+    ) {
+      onUseTemplate(template);
+    }
+  };
 
   return (
     <article className="template-card">
@@ -97,18 +387,15 @@ function TemplateCard({
 
               <img
                 src={previewUrl}
-                alt={`${template.name} template preview`}
+                alt={`${templateName} template preview`}
                 loading="lazy"
                 onLoad={() =>
-                  setImageLoaded(
-                    true
-                  )
+                  setImageLoaded(true)
                 }
-                onError={() =>
-                  setImageFailed(
-                    true
-                  )
-                }
+                onError={() => {
+                  setImageLoaded(false);
+                  setImageFailed(true);
+                }}
               />
             </>
           )}
@@ -116,9 +403,7 @@ function TemplateCard({
         {(!previewUrl ||
           imageFailed) && (
           <div className="template-card__fallback">
-            <Sparkles
-              size={24}
-            />
+            <Sparkles size={24} />
 
             <strong>
               HAPPY BIRTHDAY
@@ -151,16 +436,13 @@ function TemplateCard({
             ]
               .filter(Boolean)
               .join(" ")}
-            onClick={(event) => {
-              event.stopPropagation();
-              onFavourite(
-                template.id
-              );
-            }}
+            onClick={
+              handleFavourite
+            }
             aria-label={
               favourite
-                ? "Remove favourite"
-                : "Add favourite"
+                ? `Remove ${templateName} from favourites`
+                : `Add ${templateName} to favourites`
             }
           >
             <Heart
@@ -177,8 +459,8 @@ function TemplateCard({
         <div className="template-card__actions">
           <button
             type="button"
-            onClick={() =>
-              onPreview(template)
+            onClick={
+              handlePreview
             }
           >
             <Eye size={17} />
@@ -187,13 +469,12 @@ function TemplateCard({
 
           <button
             type="button"
-            onClick={() =>
-              onUseTemplate(
-                template
-              )
+            onClick={
+              handleUseTemplate
             }
           >
             Use design
+
             <ArrowUpRight
               size={17}
             />
@@ -203,51 +484,51 @@ function TemplateCard({
 
       <div className="template-card__details">
         <div>
-          <h3>
-            {template.name}
+          <h3 title={templateName}>
+            {templateName}
           </h3>
 
           <p>
-            {category}
+            {categoryName}
             {" · "}
-            {
-              template.design?.layout
-                ?.name
-            }
+            {layoutName}
           </p>
         </div>
 
         <span
           className="template-card__palette"
-          title={
-            palette?.name ||
-            "Colour palette"
-          }
+          title={paletteName}
         >
           <i
             style={{
               background:
-                palette?.colors
-                  ?.background ||
-                "#111111",
+                getPaletteColor(
+                  palette,
+                  "background",
+                  "#111111"
+                ),
             }}
           />
 
           <i
             style={{
               background:
-                palette?.colors
-                  ?.primary ||
-                "#FF6B1A",
+                getPaletteColor(
+                  palette,
+                  "primary",
+                  "#FF6B1A"
+                ),
             }}
           />
 
           <i
             style={{
               background:
-                palette?.colors
-                  ?.secondary ||
-                "#FFFFFF",
+                getPaletteColor(
+                  palette,
+                  "secondary",
+                  "#FFFFFF"
+                ),
             }}
           />
         </span>
@@ -256,6 +537,7 @@ function TemplateCard({
       {!previewUrl && (
         <div className="template-card__preview-state">
           <ImageIcon size={14} />
+
           Preview is being generated
         </div>
       )}

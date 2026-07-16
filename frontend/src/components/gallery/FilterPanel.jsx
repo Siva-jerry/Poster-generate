@@ -6,11 +6,99 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
 import "./FilterPanel.css";
+
+function getSafeText(
+  value,
+  fallback
+) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    return String(value);
+  }
+
+  return fallback;
+}
+
+function getSafeId(
+  item,
+  index,
+  prefix
+) {
+  if (
+    typeof item === "string" ||
+    typeof item === "number"
+  ) {
+    return String(item);
+  }
+
+  if (
+    item &&
+    typeof item === "object"
+  ) {
+    const possibleId =
+      item.id ??
+      item.slug ??
+      item.key;
+
+    if (
+      typeof possibleId === "string" ||
+      typeof possibleId === "number"
+    ) {
+      return String(possibleId);
+    }
+  }
+
+  return `${prefix}-${index}`;
+}
+
+function getSafeName(
+  item,
+  index,
+  prefix
+) {
+  if (
+    typeof item === "string" ||
+    typeof item === "number"
+  ) {
+    return String(item);
+  }
+
+  if (
+    item &&
+    typeof item === "object"
+  ) {
+    const possibleName =
+      item.name ??
+      item.label ??
+      item.title ??
+      item.displayName;
+
+    return getSafeText(
+      possibleName,
+      `${prefix} ${index + 1}`
+    );
+  }
+
+  return `${prefix} ${index + 1}`;
+}
+
+function getPaletteColor(
+  palette,
+  colorName,
+  fallback
+) {
+  const value =
+    palette?.colors?.[colorName];
+
+  return typeof value === "string"
+    ? value
+    : fallback;
+}
 
 function FilterPanel({
   filters,
@@ -27,17 +115,22 @@ function FilterPanel({
     setMobileOpen,
   ] = useState(false);
 
-  const palettes =
-    filters?.palettes || [];
+  const palettes = Array.isArray(
+    filters?.palettes
+  )
+    ? filters.palettes
+    : [];
 
-  const layouts =
-    filters?.layouts || [];
+  const layouts = Array.isArray(
+    filters?.layouts
+  )
+    ? filters.layouts
+    : [];
 
   const activeFilterCount = [
     selectedPalette !== "all",
     selectedLayout !== "all",
-    selectedSort !==
-      "trending",
+    selectedSort !== "trending",
   ].filter(Boolean).length;
 
   return (
@@ -75,7 +168,10 @@ function FilterPanel({
         <div className="filter-panel__mobile-header">
           <div>
             <Filter size={19} />
-            <strong>Filters</strong>
+
+            <strong>
+              Filters
+            </strong>
           </div>
 
           <button
@@ -165,14 +261,30 @@ function FilterPanel({
               </option>
 
               {layouts.map(
-                (layout) => (
-                  <option
-                    key={layout.id}
-                    value={layout.id}
-                  >
-                    {layout.name}
-                  </option>
-                )
+                (layout, index) => {
+                  const layoutId =
+                    getSafeId(
+                      layout,
+                      index,
+                      "layout"
+                    );
+
+                  const layoutName =
+                    getSafeName(
+                      layout,
+                      index,
+                      "Layout"
+                    );
+
+                  return (
+                    <option
+                      key={layoutId}
+                      value={layoutId}
+                    >
+                      {layoutName}
+                    </option>
+                  );
+                }
               )}
             </select>
 
@@ -203,55 +315,83 @@ function FilterPanel({
               }
             >
               <i className="filter-palettes__all" />
+
               <strong>
                 All colours
               </strong>
             </button>
 
             {palettes.map(
-              (palette) => (
-                <button
-                  key={palette.id}
-                  type="button"
-                  className={
-                    selectedPalette ===
-                    palette.id
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    onPaletteChange(
-                      palette.id
-                    )
-                  }
-                >
-                  <span className="filter-palette-swatches">
-                    <i
-                      style={{
-                        background:
-                          palette
-                            .colors
-                            ?.background ||
-                          "#111111",
-                      }}
-                    />
+              (
+                palette,
+                index
+              ) => {
+                const paletteId =
+                  getSafeId(
+                    palette,
+                    index,
+                    "palette"
+                  );
 
-                    <i
-                      style={{
-                        background:
-                          palette
-                            .colors
-                            ?.primary ||
-                          "#FF6B1A",
-                      }}
-                    />
-                  </span>
+                const paletteName =
+                  getSafeName(
+                    palette,
+                    index,
+                    "Palette"
+                  );
 
-                  <strong>
-                    {palette.name}
-                  </strong>
-                </button>
-              )
+                const backgroundColor =
+                  getPaletteColor(
+                    palette,
+                    "background",
+                    "#111111"
+                  );
+
+                const primaryColor =
+                  getPaletteColor(
+                    palette,
+                    "primary",
+                    "#FF6B1A"
+                  );
+
+                return (
+                  <button
+                    key={paletteId}
+                    type="button"
+                    className={
+                      selectedPalette ===
+                      paletteId
+                        ? "active"
+                        : ""
+                    }
+                    onClick={() =>
+                      onPaletteChange(
+                        paletteId
+                      )
+                    }
+                  >
+                    <span className="filter-palette-swatches">
+                      <i
+                        style={{
+                          background:
+                            backgroundColor,
+                        }}
+                      />
+
+                      <i
+                        style={{
+                          background:
+                            primaryColor,
+                        }}
+                      />
+                    </span>
+
+                    <strong>
+                      {paletteName}
+                    </strong>
+                  </button>
+                );
+              }
             )}
           </div>
         </div>
