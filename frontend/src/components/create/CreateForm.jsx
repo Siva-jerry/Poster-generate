@@ -1,597 +1,1187 @@
+import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
-  Check,
-  LoaderCircle,
-  Sparkles,
-  WandSparkles,
-} from "lucide-react";
-
-import {
-  useState,
-} from "react";
-
-import {
-  useNavigate,
-} from "react-router-dom";
-
-import AppButton from "../common/AppButton";
-import PhotoUploader from "./PhotoUploader";
-import StyleSelector from "./StyleSelector";
-import ColorSelector from "./ColorSelector";
-
-import {
-  removeBackground,
-  uploadAsset,
-} from "../../services/assetService";
-
-import useUserDataStore from "../store/userDataStore";
+  generatePoster,
+  getPosterStatus,
+} from "../../services/posterService";
 
 import "./CreateForm.css";
 
-const yearOptions = [
-  "First Year",
-  "Second Year",
-  "Third Year",
-  "Final Year",
-  "Postgraduate",
-  "Other",
+/*
+|--------------------------------------------------------------------------
+| Initial form values
+|--------------------------------------------------------------------------
+*/
+
+const INITIAL_FORM = {
+  name: "",
+  department: "",
+  year: "",
+  rollNo: "",
+  collegeName: "",
+  birthdayQuote: "",
+  birthdayHeading: "HAPPY BIRTHDAY",
+  designation: "",
+  date: "",
+  prompt: "",
+  style: "luxury",
+  theme: "",
+  colors: "",
+  variationCount: 4,
+  removeBackground: true,
+};
+
+/*
+|--------------------------------------------------------------------------
+| Style options
+|--------------------------------------------------------------------------
+*/
+
+const STYLE_OPTIONS = [
+  {
+    value: "luxury",
+    label: "Luxury",
+    description:
+      "Premium gold, elegant lighting and rich decoration.",
+  },
+  {
+    value: "modern",
+    label: "Modern",
+    description:
+      "Clean typography, gradients and contemporary composition.",
+  },
+  {
+    value: "floral",
+    label: "Floral",
+    description:
+      "Beautiful flowers, soft colors and graceful decoration.",
+  },
+  {
+    value: "neon",
+    label: "Neon",
+    description:
+      "Glowing lights, vivid colors and futuristic effects.",
+  },
+  {
+    value: "sports",
+    label: "Sports",
+    description:
+      "Powerful movement, speed effects and energetic composition.",
+  },
+  {
+    value: "minimal",
+    label: "Minimal",
+    description:
+      "Simple, clean and sophisticated birthday design.",
+  },
 ];
 
-function CreateForm() {
-  const navigate = useNavigate();
+/*
+|--------------------------------------------------------------------------
+| Component
+|--------------------------------------------------------------------------
+*/
 
-  const {
-    ownerKey,
-    studentData,
-    stylePreferences,
-    originalPhotoAsset,
-    removedPhotoAsset,
-    setStudentField,
-    setStylePreference,
-    setOriginalPhotoAsset,
-    setRemovedPhotoAsset,
-  } = useUserDataStore();
+function CreateForm({
+  onGenerateStart,
+  onGenerateSuccess,
+  onGenerateError,
+  onGenerated,
+}) {
+  const [form, setForm] =
+    useState(INITIAL_FORM);
 
-  const [
-    selectedFile,
-    setSelectedFile,
-  ] = useState(null);
+  const [photo, setPhoto] =
+    useState(null);
 
-  const [
-    photoError,
-    setPhotoError,
-  ] = useState("");
+  const [logo, setLogo] =
+    useState(null);
 
-  const [
-    formError,
-    setFormError,
-  ] = useState("");
+  const [photoPreview, setPhotoPreview] =
+    useState("");
 
-  const [
-    uploadProgress,
-    setUploadProgress,
-  ] = useState(0);
+  const [logoPreview, setLogoPreview] =
+    useState("");
 
-  const [
-    submitting,
-    setSubmitting,
-  ] = useState(false);
+  const [isGenerating, setIsGenerating] =
+    useState(false);
 
-  const [
-    currentTask,
-    setCurrentTask,
-  ] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const handleFileChange = (
+  const [serviceStatus, setServiceStatus] =
+    useState({
+      checking: true,
+      ready: false,
+      message:
+        "Checking AI poster service...",
+    });
+
+  /*
+  |--------------------------------------------------------------------------
+  | Selected style information
+  |--------------------------------------------------------------------------
+  */
+
+  const selectedStyle = useMemo(
+    () =>
+      STYLE_OPTIONS.find(
+        (item) =>
+          item.value === form.style
+      ) || STYLE_OPTIONS[0],
+    [form.style]
+  );
+
+  /*
+  |--------------------------------------------------------------------------
+  | Check backend poster service
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkService() {
+      try {
+        const result =
+          await getPosterStatus();
+
+        if (!active) {
+          return;
+        }
+
+        setServiceStatus({
+          checking: false,
+          ready: Boolean(result.ready),
+          message: result.ready
+            ? "AI poster service is ready."
+            : "AI service configuration is incomplete.",
+        });
+      } catch (statusError) {
+        if (!active) {
+          return;
+        }
+
+        setServiceStatus({
+          checking: false,
+          ready: false,
+          message:
+            statusError.message ||
+            "Unable to connect to the backend.",
+        });
+      }
+    }
+
+    checkService();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Revoke preview URLs
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) {
+        URL.revokeObjectURL(
+          photoPreview
+        );
+      }
+
+      if (logoPreview) {
+        URL.revokeObjectURL(
+          logoPreview
+        );
+      }
+    };
+  }, [photoPreview, logoPreview]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Input handlers
+  |--------------------------------------------------------------------------
+  */
+
+  function handleChange(event) {
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = event.target;
+
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : value,
+    }));
+
+    if (error) {
+      setError("");
+    }
+  }
+
+  function validateImage(
     file,
-    errorMessage
-  ) => {
-    setPhotoError(
-      errorMessage || ""
-    );
-
+    maximumSizeMb
+  ) {
     if (!file) {
-      return;
+      return "";
     }
 
-    setSelectedFile(file);
-    setOriginalPhotoAsset(null);
-    setRemovedPhotoAsset(null);
-  };
-
-  const handleRemovePhoto = () => {
-    setSelectedFile(null);
-    setPhotoError("");
-    setOriginalPhotoAsset(null);
-    setRemovedPhotoAsset(null);
-    setUploadProgress(0);
-  };
-
-  const validateForm = () => {
-    if (!studentData.name.trim()) {
-      return "Student name is required.";
-    }
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "image/avif",
+    ];
 
     if (
-      !studentData.department.trim()
+      !allowedTypes.includes(file.type)
     ) {
-      return "Department is required.";
+      return "Use a JPG, PNG, WEBP, GIF or AVIF image.";
     }
 
-    if (!studentData.year.trim()) {
-      return "Year is required.";
-    }
-
-    if (!studentData.rollNo.trim()) {
-      return "Roll number is required.";
-    }
+    const maximumBytes =
+      maximumSizeMb *
+      1024 *
+      1024;
 
     if (
-      !selectedFile &&
-      !originalPhotoAsset
+      file.size > maximumBytes
     ) {
-      return "Please upload a student photo.";
+      return `Image must not exceed ${maximumSizeMb} MB.`;
     }
 
     return "";
-  };
+  }
 
-  const handleSubmit = async (
-    event
-  ) => {
+  function handlePhotoChange(event) {
+    const selectedFile =
+      event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    const validationError =
+      validateImage(
+        selectedFile,
+        10
+      );
+
+    if (validationError) {
+      setError(validationError);
+      event.target.value = "";
+      return;
+    }
+
+    if (photoPreview) {
+      URL.revokeObjectURL(
+        photoPreview
+      );
+    }
+
+    setPhoto(selectedFile);
+
+    setPhotoPreview(
+      URL.createObjectURL(
+        selectedFile
+      )
+    );
+
+    setError("");
+  }
+
+  function handleLogoChange(event) {
+    const selectedFile =
+      event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    const validationError =
+      validateImage(
+        selectedFile,
+        5
+      );
+
+    if (validationError) {
+      setError(validationError);
+      event.target.value = "";
+      return;
+    }
+
+    if (logoPreview) {
+      URL.revokeObjectURL(
+        logoPreview
+      );
+    }
+
+    setLogo(selectedFile);
+
+    setLogoPreview(
+      URL.createObjectURL(
+        selectedFile
+      )
+    );
+
+    setError("");
+  }
+
+  function removePhoto() {
+    if (photoPreview) {
+      URL.revokeObjectURL(
+        photoPreview
+      );
+    }
+
+    setPhoto(null);
+    setPhotoPreview("");
+  }
+
+  function removeLogo() {
+    if (logoPreview) {
+      URL.revokeObjectURL(
+        logoPreview
+      );
+    }
+
+    setLogo(null);
+    setLogoPreview("");
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Form validation
+  |--------------------------------------------------------------------------
+  */
+
+  function validateForm() {
+    if (!photo) {
+      return "Please upload the student's photo.";
+    }
+
+    if (!form.name.trim()) {
+      return "Please enter the student's name.";
+    }
+
+    if (!form.prompt.trim()) {
+      return "Please describe the birthday poster design.";
+    }
+
+    const count = Number(
+      form.variationCount
+    );
+
+    if (
+      !Number.isInteger(count) ||
+      count < 1 ||
+      count > 8
+    ) {
+      return "Variation count must be between 1 and 8.";
+    }
+
+    return "";
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Generate posters
+  |--------------------------------------------------------------------------
+  */
+
+  async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isGenerating) {
+      return;
+    }
 
     const validationError =
       validateForm();
 
     if (validationError) {
-      setFormError(
+      setError(validationError);
+
+      onGenerateError?.(
         validationError
       );
 
       return;
     }
 
-    setFormError("");
-    setSubmitting(true);
+    setError("");
+    setIsGenerating(true);
+
+    onGenerateStart?.();
 
     try {
-      let uploadedAsset =
-        originalPhotoAsset;
+      const result =
+        await generatePoster({
+          photo,
+          logo,
 
-      if (
-        selectedFile &&
-        !uploadedAsset
-      ) {
-        setCurrentTask(
-          "Uploading student photo"
-        );
+          name:
+            form.name.trim(),
 
-        uploadedAsset =
-          await uploadAsset({
-            file: selectedFile,
-            assetType:
-              "student-photo",
-            ownerKey,
-            onUploadProgress:
-              setUploadProgress,
-          });
+          department:
+            form.department.trim(),
 
-        setOriginalPhotoAsset(
-          uploadedAsset
-        );
-      }
+          year:
+            form.year.trim(),
 
-      let finalRemovedAsset =
-        removedPhotoAsset;
+          rollNo:
+            form.rollNo.trim(),
 
-      if (
-        stylePreferences
-          .removeBackground &&
-        !finalRemovedAsset
-      ) {
-        setCurrentTask(
-          "Removing photo background"
-        );
+          collegeName:
+            form.collegeName.trim(),
 
-        finalRemovedAsset =
-          await removeBackground({
-            assetId:
-              uploadedAsset.id,
-            ownerKey,
-          });
+          birthdayQuote:
+            form.birthdayQuote.trim(),
 
-        setRemovedPhotoAsset(
-          finalRemovedAsset
-        );
-      }
+          birthdayHeading:
+            form.birthdayHeading.trim() ||
+            "HAPPY BIRTHDAY",
 
-      setCurrentTask(
-        "Preparing premium designs"
-      );
+          designation:
+            form.designation.trim(),
 
-      navigate(
-        `/templates?category=${stylePreferences.category}`
-      );
-    } catch (error) {
-      setFormError(
-        error.message ||
-          "Unable to continue."
+          date:
+            form.date,
+
+          prompt:
+            form.prompt.trim(),
+
+          style:
+            form.style,
+
+          theme:
+            form.theme.trim(),
+
+          colors:
+            form.colors.trim(),
+
+          variationCount:
+            Number(
+              form.variationCount
+            ),
+
+          removeBackground:
+            form.removeBackground,
+        });
+
+      onGenerateSuccess?.(result);
+      onGenerated?.(result);
+    } catch (generateError) {
+      const message =
+        generateError.message ||
+        "Unable to generate posters.";
+
+      setError(message);
+
+      onGenerateError?.(
+        message,
+        generateError
       );
     } finally {
-      setSubmitting(false);
-      setCurrentTask("");
+      setIsGenerating(false);
     }
-  };
+  }
 
-  const currentPreviewUrl =
-    originalPhotoAsset?.publicUrl ||
-    null;
+  /*
+  |--------------------------------------------------------------------------
+  | Reset form
+  |--------------------------------------------------------------------------
+  */
+
+  function handleReset() {
+    if (isGenerating) {
+      return;
+    }
+
+    if (photoPreview) {
+      URL.revokeObjectURL(
+        photoPreview
+      );
+    }
+
+    if (logoPreview) {
+      URL.revokeObjectURL(
+        logoPreview
+      );
+    }
+
+    setForm(INITIAL_FORM);
+    setPhoto(null);
+    setLogo(null);
+    setPhotoPreview("");
+    setLogoPreview("");
+    setError("");
+  }
 
   return (
     <form
       className="create-form"
       onSubmit={handleSubmit}
+      noValidate
     >
-      <div className="create-form__layout">
-        <div className="create-form__main">
-          <section className="create-form__card">
-            <div className="create-form__card-heading">
-              <span>
-                <Sparkles
-                  size={15}
-                />
-                Student Information
-              </span>
+      <div className="create-form__header">
+        <div>
+          <span className="create-form__eyebrow">
+            SmartWish AI
+          </span>
 
-              <h2>
-                Enter birthday details
-              </h2>
+          <h1>
+            Create a Birthday Poster
+          </h1>
+
+          <p>
+            Upload the student photo,
+            enter the birthday details
+            and describe your preferred
+            poster design.
+          </p>
+        </div>
+
+        <div
+          className={`create-form__status ${
+            serviceStatus.ready
+              ? "is-ready"
+              : "is-offline"
+          }`}
+        >
+          <span className="create-form__status-dot" />
+
+          <span>
+            {serviceStatus.message}
+          </span>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          className="create-form__error"
+          role="alert"
+        >
+          <span>⚠</span>
+
+          <p>{error}</p>
+
+          <button
+            type="button"
+            aria-label="Close error"
+            onClick={() =>
+              setError("")
+            }
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <section className="create-form__section">
+        <div className="create-form__section-heading">
+          <span className="create-form__step">
+            01
+          </span>
+
+          <div>
+            <h2>Upload assets</h2>
+
+            <p>
+              Add a clear student photo
+              and an optional college
+              logo.
+            </p>
+          </div>
+        </div>
+
+        <div className="create-form__upload-grid">
+          <div className="create-form__upload-card">
+            <div className="create-form__upload-title">
+              <div>
+                <h3>Student photo</h3>
+                <span>Required</span>
+              </div>
 
               <p>
-                These values are inserted
-                automatically into every
-                generated poster.
+                Maximum file size: 10 MB
               </p>
             </div>
 
-            <div className="create-form__fields">
-              <label className="create-field create-field--full">
-                <span>
-                  Student name
-                  <strong>*</strong>
+            {photoPreview ? (
+              <div className="create-form__preview">
+                <img
+                  src={photoPreview}
+                  alt="Student preview"
+                />
+
+                <div className="create-form__preview-actions">
+                  <label>
+                    Replace
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                      onChange={
+                        handlePhotoChange
+                      }
+                      disabled={
+                        isGenerating
+                      }
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    disabled={
+                      isGenerating
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="create-form__dropzone">
+                <span className="create-form__upload-icon">
+                  ＋
                 </span>
+
+                <strong>
+                  Upload student photo
+                </strong>
+
+                <small>
+                  JPG, PNG, WEBP, GIF or
+                  AVIF
+                </small>
 
                 <input
-                  type="text"
-                  value={
-                    studentData.name
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  onChange={
+                    handlePhotoChange
                   }
-                  placeholder="Example: Siva M"
-                  onChange={(event) =>
-                    setStudentField(
-                      "name",
-                      event.target.value
-                    )
+                  disabled={
+                    isGenerating
                   }
                 />
               </label>
+            )}
+          </div>
 
-              <label className="create-field">
-                <span>
-                  Department
-                  <strong>*</strong>
+          <div className="create-form__upload-card">
+            <div className="create-form__upload-title">
+              <div>
+                <h3>College logo</h3>
+                <span className="is-optional">
+                  Optional
                 </span>
+              </div>
+
+              <p>
+                Maximum file size: 5 MB
+              </p>
+            </div>
+
+            {logoPreview ? (
+              <div className="create-form__preview create-form__preview--logo">
+                <img
+                  src={logoPreview}
+                  alt="College logo preview"
+                />
+
+                <div className="create-form__preview-actions">
+                  <label>
+                    Replace
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                      onChange={
+                        handleLogoChange
+                      }
+                      disabled={
+                        isGenerating
+                      }
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    disabled={
+                      isGenerating
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="create-form__dropzone">
+                <span className="create-form__upload-icon">
+                  ＋
+                </span>
+
+                <strong>
+                  Upload college logo
+                </strong>
+
+                <small>
+                  Transparent PNG is
+                  recommended
+                </small>
 
                 <input
-                  type="text"
-                  value={
-                    studentData.department
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  onChange={
+                    handleLogoChange
                   }
-                  placeholder="Computer Science"
-                  onChange={(event) =>
-                    setStudentField(
-                      "department",
-                      event.target.value
-                    )
+                  disabled={
+                    isGenerating
                   }
                 />
               </label>
+            )}
+          </div>
+        </div>
+      </section>
 
-              <label className="create-field">
+      <section className="create-form__section">
+        <div className="create-form__section-heading">
+          <span className="create-form__step">
+            02
+          </span>
+
+          <div>
+            <h2>Student details</h2>
+
+            <p>
+              These details will be
+              placed on the final poster.
+            </p>
+          </div>
+        </div>
+
+        <div className="create-form__fields">
+          <div className="create-form__field create-form__field--wide">
+            <label htmlFor="name">
+              Student name
+              <span>*</span>
+            </label>
+
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="Enter student name"
+              maxLength={100}
+              disabled={isGenerating}
+              required
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="department">
+              Department
+            </label>
+
+            <input
+              id="department"
+              name="department"
+              type="text"
+              value={form.department}
+              onChange={handleChange}
+              placeholder="Computer Science"
+              maxLength={100}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="year">
+              Year
+            </label>
+
+            <input
+              id="year"
+              name="year"
+              type="text"
+              value={form.year}
+              onChange={handleChange}
+              placeholder="Final Year"
+              maxLength={50}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="rollNo">
+              Roll number
+            </label>
+
+            <input
+              id="rollNo"
+              name="rollNo"
+              type="text"
+              value={form.rollNo}
+              onChange={handleChange}
+              placeholder="21CS104"
+              maxLength={50}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="designation">
+              Designation
+            </label>
+
+            <input
+              id="designation"
+              name="designation"
+              type="text"
+              value={form.designation}
+              onChange={handleChange}
+              placeholder="Student Coordinator"
+              maxLength={80}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field create-form__field--wide">
+            <label htmlFor="collegeName">
+              College name
+            </label>
+
+            <input
+              id="collegeName"
+              name="collegeName"
+              type="text"
+              value={form.collegeName}
+              onChange={handleChange}
+              placeholder="ABC Engineering College"
+              maxLength={150}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="birthdayHeading">
+              Birthday heading
+            </label>
+
+            <input
+              id="birthdayHeading"
+              name="birthdayHeading"
+              type="text"
+              value={
+                form.birthdayHeading
+              }
+              onChange={handleChange}
+              placeholder="HAPPY BIRTHDAY"
+              maxLength={60}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="date">
+              Birthday date
+            </label>
+
+            <input
+              id="date"
+              name="date"
+              type="date"
+              value={form.date}
+              onChange={handleChange}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field create-form__field--full">
+            <label htmlFor="birthdayQuote">
+              Birthday wish
+            </label>
+
+            <textarea
+              id="birthdayQuote"
+              name="birthdayQuote"
+              value={
+                form.birthdayQuote
+              }
+              onChange={handleChange}
+              placeholder="May your birthday bring happiness, success and unforgettable memories."
+              rows={4}
+              maxLength={350}
+              disabled={isGenerating}
+            />
+
+            <span className="create-form__character-count">
+              {
+                form.birthdayQuote
+                  .length
+              }
+              /350
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="create-form__section">
+        <div className="create-form__section-heading">
+          <span className="create-form__step">
+            03
+          </span>
+
+          <div>
+            <h2>
+              AI design preferences
+            </h2>
+
+            <p>
+              Select a visual style and
+              describe the design you
+              want.
+            </p>
+          </div>
+        </div>
+
+        <div className="create-form__style-grid">
+          {STYLE_OPTIONS.map(
+            (styleOption) => (
+              <button
+                key={
+                  styleOption.value
+                }
+                type="button"
+                className={`create-form__style-card ${
+                  form.style ===
+                  styleOption.value
+                    ? "is-active"
+                    : ""
+                }`}
+                onClick={() =>
+                  setForm(
+                    (currentForm) => ({
+                      ...currentForm,
+                      style:
+                        styleOption.value,
+                    })
+                  )
+                }
+                disabled={isGenerating}
+              >
                 <span>
-                  Year
-                  <strong>*</strong>
+                  {styleOption.label}
                 </span>
-
-                <select
-                  value={
-                    studentData.year
-                  }
-                  onChange={(event) =>
-                    setStudentField(
-                      "year",
-                      event.target.value
-                    )
-                  }
-                >
-                  <option value="">
-                    Select year
-                  </option>
-
-                  {yearOptions.map(
-                    (option) => (
-                      <option
-                        key={option}
-                        value={option}
-                      >
-                        {option}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-
-              <label className="create-field">
-                <span>
-                  Roll number
-                  <strong>*</strong>
-                </span>
-
-                <input
-                  type="text"
-                  value={
-                    studentData.rollNo
-                  }
-                  placeholder="22CS101"
-                  onChange={(event) =>
-                    setStudentField(
-                      "rollNo",
-                      event.target.value
-                    )
-                  }
-                />
-              </label>
-
-              <label className="create-field">
-                <span>
-                  College name
-                </span>
-
-                <input
-                  type="text"
-                  value={
-                    studentData.collegeName
-                  }
-                  placeholder="ABC College"
-                  onChange={(event) =>
-                    setStudentField(
-                      "collegeName",
-                      event.target.value
-                    )
-                  }
-                />
-              </label>
-
-              <label className="create-field create-field--full">
-                <span>
-                  Birthday message
-                </span>
-
-                <textarea
-                  rows="4"
-                  value={
-                    studentData.birthdayQuote
-                  }
-                  maxLength="180"
-                  placeholder="Write a birthday wish"
-                  onChange={(event) =>
-                    setStudentField(
-                      "birthdayQuote",
-                      event.target.value
-                    )
-                  }
-                />
 
                 <small>
                   {
-                    studentData
-                      .birthdayQuote
-                      .length
+                    styleOption.description
                   }
-                  /180
                 </small>
-              </label>
-            </div>
-          </section>
-
-          <StyleSelector
-            category={
-              stylePreferences.category
-            }
-            mood={
-              stylePreferences.mood
-            }
-            onCategoryChange={(
-              value
-            ) =>
-              setStylePreference(
-                "category",
-                value
-              )
-            }
-            onMoodChange={(
-              value
-            ) =>
-              setStylePreference(
-                "mood",
-                value
-              )
-            }
-          />
-
-          <ColorSelector
-            primaryColor={
-              stylePreferences
-                .primaryColor
-            }
-            secondaryColor={
-              stylePreferences
-                .secondaryColor
-            }
-            onPrimaryChange={(
-              value
-            ) =>
-              setStylePreference(
-                "primaryColor",
-                value
-              )
-            }
-            onSecondaryChange={(
-              value
-            ) =>
-              setStylePreference(
-                "secondaryColor",
-                value
-              )
-            }
-          />
+              </button>
+            )
+          )}
         </div>
 
-        <aside className="create-form__aside">
-          <PhotoUploader
-            file={selectedFile}
-            previewUrl={
-              currentPreviewUrl
-            }
-            uploading={
-              submitting &&
-              currentTask.includes(
-                "Uploading"
-              )
-            }
-            progress={
-              uploadProgress
-            }
-            error={photoError}
-            onFileChange={
-              handleFileChange
-            }
-            onRemove={
-              handleRemovePhoto
-            }
-          />
+        <div className="create-form__selected-style">
+          Selected style:
+          <strong>
+            {selectedStyle.label}
+          </strong>
+        </div>
 
-          <section className="create-form__settings">
-            <div className="create-form__settings-heading">
-              <WandSparkles
-                size={21}
-              />
-
-              <div>
-                <h3>
-                  Smart photo tools
-                </h3>
-
-                <p>
-                  Prepare the student
-                  portrait automatically.
-                </p>
-              </div>
-            </div>
-
-            <label className="create-form__toggle-row">
-              <div>
-                <strong>
-                  Remove background
-                </strong>
-
-                <span>
-                  Generate a transparent
-                  student cutout
-                </span>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={
-                  stylePreferences
-                    .removeBackground
-                }
-                onChange={(event) =>
-                  setStylePreference(
-                    "removeBackground",
-                    event.target.checked
-                  )
-                }
-              />
-
-              <i />
+        <div className="create-form__fields">
+          <div className="create-form__field create-form__field--full">
+            <label htmlFor="prompt">
+              Describe your poster
+              <span>*</span>
             </label>
 
-            <ul className="create-form__benefits">
-              <li>
-                <Check size={15} />
-                Automatic photo placement
-              </li>
+            <textarea
+              id="prompt"
+              name="prompt"
+              value={form.prompt}
+              onChange={handleChange}
+              placeholder="Example: Premium Formula 1 birthday poster with a red racing car, dramatic speed trails, dark cinematic background, gold lighting and space for the student portrait."
+              rows={6}
+              maxLength={1000}
+              disabled={isGenerating}
+              required
+            />
 
-              <li>
-                <Check size={15} />
-                Multiple editable layouts
-              </li>
-
-              <li>
-                <Check size={15} />
-                Premium colour variations
-              </li>
-
-              <li>
-                <Check size={15} />
-                Fonts can be changed later
-              </li>
-            </ul>
-          </section>
-
-          {formError && (
-            <div className="create-form__error">
-              {formError}
-            </div>
-          )}
-
-          <div className="create-form__submit-card">
-            <AppButton
-              type="submit"
-              size="large"
-              variant="gradient"
-              className="full-width"
-              disabled={submitting}
-              icon={
-                submitting ? (
-                  <LoaderCircle
-                    size={19}
-                    className="create-form__spinner"
-                  />
-                ) : (
-                  <ArrowRight
-                    size={19}
-                  />
-                )
-              }
-            >
-              {submitting
-                ? currentTask ||
-                  "Preparing poster"
-                : "Explore Premium Designs"}
-            </AppButton>
-
-            <p>
-              Your details remain
-              editable inside the design
-              studio.
-            </p>
+            <span className="create-form__character-count">
+              {form.prompt.length}
+              /1000
+            </span>
           </div>
-        </aside>
+
+          <div className="create-form__field">
+            <label htmlFor="theme">
+              Theme
+            </label>
+
+            <input
+              id="theme"
+              name="theme"
+              type="text"
+              value={form.theme}
+              onChange={handleChange}
+              placeholder="Racing, royal, floral..."
+              maxLength={100}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="colors">
+              Preferred colors
+            </label>
+
+            <input
+              id="colors"
+              name="colors"
+              type="text"
+              value={form.colors}
+              onChange={handleChange}
+              placeholder="Black, red and gold"
+              maxLength={100}
+              disabled={isGenerating}
+            />
+          </div>
+
+          <div className="create-form__field">
+            <label htmlFor="variationCount">
+              Number of variations
+            </label>
+
+            <select
+              id="variationCount"
+              name="variationCount"
+              value={
+                form.variationCount
+              }
+              onChange={handleChange}
+              disabled={isGenerating}
+            >
+              <option value="1">
+                1 poster
+              </option>
+
+              <option value="2">
+                2 posters
+              </option>
+
+              <option value="3">
+                3 posters
+              </option>
+
+              <option value="4">
+                4 posters
+              </option>
+
+              <option value="5">
+                5 posters
+              </option>
+
+              <option value="6">
+                6 posters
+              </option>
+            </select>
+          </div>
+
+          <div className="create-form__field create-form__field--toggle">
+            <label htmlFor="removeBackground">
+              Remove photo background
+            </label>
+
+            <label className="create-form__switch">
+              <input
+                id="removeBackground"
+                name="removeBackground"
+                type="checkbox"
+                checked={
+                  form.removeBackground
+                }
+                onChange={handleChange}
+                disabled={isGenerating}
+              />
+
+              <span className="create-form__switch-slider" />
+            </label>
+
+            <small>
+              Keep enabled for a clean,
+              professional portrait cutout.
+            </small>
+          </div>
+        </div>
+      </section>
+
+      <div className="create-form__footer">
+        <button
+          type="button"
+          className="create-form__reset-button"
+          onClick={handleReset}
+          disabled={isGenerating}
+        >
+          Reset
+        </button>
+
+        <button
+          type="submit"
+          className="create-form__generate-button"
+          disabled={
+            isGenerating ||
+            serviceStatus.checking
+          }
+        >
+          {isGenerating ? (
+            <>
+              <span className="create-form__spinner" />
+              Generating premium
+              posters...
+            </>
+          ) : (
+            <>
+              <span>✦</span>
+              Generate Birthday Posters
+            </>
+          )}
+        </button>
       </div>
+
+      {isGenerating && (
+        <div className="create-form__generating-note">
+          <strong>
+            SmartWish AI is creating
+            your designs.
+          </strong>
+
+          <p>
+            AI background generation
+            and poster composition may
+            take a few moments. Please
+            keep this page open.
+          </p>
+        </div>
+      )}
     </form>
   );
 }
