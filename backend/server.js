@@ -42,6 +42,10 @@ const previewRoutes = require(
   "./routes/previewRoutes"
 );
 
+const posterRoutes = require(
+  "./routes/posterRoutes"
+);
+
 const app = express();
 
 /*
@@ -101,11 +105,53 @@ const PREVIEWS_DIRECTORY = path.join(
   "previews"
 );
 
+/*
+|--------------------------------------------------------------------------
+| Poster-specific directories
+|--------------------------------------------------------------------------
+*/
+
+const POSTER_PHOTOS_DIRECTORY =
+  path.join(
+    UPLOADS_DIRECTORY,
+    "posters",
+    "photos"
+  );
+
+const POSTER_LOGOS_DIRECTORY =
+  path.join(
+    UPLOADS_DIRECTORY,
+    "posters",
+    "logos"
+  );
+
+const POSTER_BACKGROUNDS_DIRECTORY =
+  path.join(
+    GENERATED_DIRECTORY,
+    "backgrounds"
+  );
+
+const POSTER_TEMP_DIRECTORY =
+  path.join(
+    GENERATED_DIRECTORY,
+    ".temp"
+  );
+
+/*
+|--------------------------------------------------------------------------
+| All required directories
+|--------------------------------------------------------------------------
+*/
+
 const requiredDirectories = [
   UPLOADS_DIRECTORY,
   GENERATED_DIRECTORY,
   PREVIEWS_DIRECTORY,
-];
+  POSTER_PHOTOS_DIRECTORY,
+  POSTER_LOGOS_DIRECTORY,
+  POSTER_BACKGROUNDS_DIRECTORY,
+  POSTER_TEMP_DIRECTORY,
+]; 
 
 requiredDirectories.forEach(
   (directory) => {
@@ -125,24 +171,24 @@ requiredDirectories.forEach(
 |--------------------------------------------------------------------------
 | Allowed frontend origins
 |--------------------------------------------------------------------------
-|
-| Multiple origins can be separated using commas:
-|
-| FRONTEND_URL=https://site.com,http://localhost:5173
-|
 */
 
-const deployedFrontendOrigins =
-  FRONTEND_URL
-    .split(",")
-    .map((origin) =>
-      origin.trim()
-    )
-    .filter(Boolean);
+const deployedFrontendOrigins = String(
+  FRONTEND_URL || ""
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const allowedOrigins = Array.from(
   new Set([
     ...deployedFrontendOrigins,
+
+    // React development
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+
+    // Vite development
     "http://localhost:5173",
     "http://127.0.0.1:5173",
   ])
@@ -150,7 +196,7 @@ const allowedOrigins = Array.from(
 
 /*
 |--------------------------------------------------------------------------
-| CORS
+| CORS configuration
 |--------------------------------------------------------------------------
 */
 
@@ -158,37 +204,24 @@ app.use(
   cors({
     origin(origin, callback) {
       /*
-       * Postman, direct browser navigation and server requests
-       * may not include an Origin header.
+       * Postman, server-to-server requests and direct browser
+       * navigation may not send an Origin header.
        */
       if (!origin) {
-        return callback(
-          null,
-          true
-        );
+        return callback(null, true);
       }
 
-      if (
-        allowedOrigins.includes(
-          origin
-        )
-      ) {
-        return callback(
-          null,
-          true
-        );
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
 
-      const corsError =
-        new Error(
-          `CORS blocked request from origin: ${origin}`
-        );
+      const corsError = new Error(
+        `CORS blocked request from origin: ${origin}`
+      );
 
       corsError.statusCode = 403;
 
-      return callback(
-        corsError
-      );
+      return callback(corsError);
     },
 
     methods: [
@@ -215,7 +248,6 @@ app.use(
     optionsSuccessStatus: 204,
   })
 );
-
 /*
 |--------------------------------------------------------------------------
 | Request body parsers
@@ -353,6 +385,11 @@ app.use(
   previewRoutes
 );
 
+app.use(
+  "/api/posters",
+  posterRoutes
+);
+
 /*
 |--------------------------------------------------------------------------
 | 404 handler
@@ -425,17 +462,17 @@ app.use(
       }
 
       if (
-        error.code ===
-        "LIMIT_UNEXPECTED_FILE"
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error:
-              "Unexpected upload field. The image field must be named 'image'.",
-          });
-      }
+  error.code ===
+  "LIMIT_UNEXPECTED_FILE"
+) {
+  return res
+    .status(400)
+    .json({
+      success: false,
+      error:
+        "Unexpected upload field. Use 'photo' for the student image and optionally 'logo' for the college logo.",
+    });
+}
 
       if (
         error.code ===

@@ -1,466 +1,205 @@
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const sharp = require("sharp");
 
-const supabase = require(
-  "../config/supabase"
-);
+/*
+|--------------------------------------------------------------------------
+| AI background configuration
+|--------------------------------------------------------------------------
+*/
 
-const {
-  createAssetFileName,
-  createAssetStoragePath,
-} = require("../utils/imageUtils");
-
-const {
-  buildBackgroundPrompt,
-} = require("../utils/promptBuilder");
-
-const cloudflareAccountId =
-  process.env.CLOUDFLARE_ACCOUNT_ID;
-
-const cloudflareApiToken =
-  process.env.CLOUDFLARE_API_TOKEN;
-
-const cloudflareModel =
-  process.env.CLOUDFLARE_AI_MODEL ||
+const DEFAULT_AI_MODEL =
   "@cf/black-forest-labs/flux-1-schnell";
 
-const assetsBucket =
-  process.env.SUPABASE_ASSETS_BUCKET ||
-  "smartwish-assets";
+const DEFAULT_WIDTH = 1080;
+const DEFAULT_HEIGHT = 1350;
 
-const dailyLimit =
-  Number(
-    process.env
-      .AI_BACKGROUND_DAILY_LIMIT
-  ) || 20;
+const DEFAULT_STEPS = 6;
+const MAX_STEPS = 8;
 
-function assertCloudflareConfiguration() {
-  if (!cloudflareAccountId) {
-    throw new Error(
-      "CLOUDFLARE_ACCOUNT_ID is missing from the backend environment variables."
-    );
-  }
+const DEFAULT_TIMEOUT_MS = 90_000;
+const DEFAULT_RETRY_COUNT = 2;
 
-  if (!cloudflareApiToken) {
-    throw new Error(
-      "CLOUDFLARE_API_TOKEN is missing from the backend environment variables."
-    );
-  }
-}
+/*
+|--------------------------------------------------------------------------
+| Safe helpers
+|--------------------------------------------------------------------------
+*/
 
-function getTodayStartIso() {
-  const now = new Date();
-
-  const startOfDay = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate()
-    )
-  );
-
-  return startOfDay.toISOString();
-}
-
-async function checkDailyLimit(
-  ownerKey
+function toSafeInteger(
+  value,
+  fallback,
+  minimum,
+  maximum
 ) {
-  const {
-    count,
-    error,
-  } = await supabase
-    .from("ai_generations")
-    .select("id", {
-      count: "exact",
-      head: true,
-    })
-    .eq("owner_key", ownerKey)
-    .gte(
-      "created_at",
-      getTodayStartIso()
-    )
-    .in("status", [
-      "pending",
-      "completed",
-    ]);
+  const number = Number(value);
 
-  if (error) {
-    throw new Error(
-      `Unable to check AI usage: ${error.message}`
-    );
+  if (!Number.isFinite(number)) {
+    return fallback;
   }
 
-  const usedToday = count || 0;
-
-  if (usedToday >= dailyLimit) {
-    const limitError = new Error(
-      `Daily AI background limit reached. Maximum allowed: ${dailyLimit}.`
-    );
-
-    limitError.statusCode = 429;
-
-    throw limitError;
-  }
-
-  return {
-    usedToday,
-    remaining:
-      dailyLimit - usedToday,
-  };
-}
-
-async function createGenerationRecord({
-  ownerKey,
-  promptData,
-}) {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("ai_generations")
-    .insert({
-      owner_key: ownerKey,
-      provider: "cloudflare",
-      model: cloudflareModel,
-      prompt: promptData.prompt,
-      style: promptData.style,
-      mood: promptData.mood,
-      primary_color:
-        promptData.primaryColor,
-      secondary_color:
-        promptData.secondaryColor,
-      status: "pending",
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(
-      `Unable to create AI generation record: ${error.message}`
-    );
-  }
-
-  return data;
-}
-
-async function markGenerationFailed({
-  generationId,
-  errorMessage,
-}) {
-  if (!generationId) {
-    return;
-  }
-
-  await supabase
-    .from("ai_generations")
-    .update({
-      status: "failed",
-      error_message: String(
-        errorMessage ||
-          "Unknown generation error"
-      ).slice(0, 1000),
-    })
-    .eq("id", generationId);
-}
-
-async function callCloudflareAI({
-  prompt,
-  seed,
-}) {
-  assertCloudflareConfiguration();
-
-  const endpoint =
-    `https://api.cloudflare.com/client/v4/accounts/` +
-    `${cloudflareAccountId}/ai/run/${cloudflareModel}`;
-
-  const response = await fetch(
-    endpoint,
-    {
-      method: "POST",
-
-      headers: {
-        Authorization:
-          `Bearer ${cloudflareApiToken}`,
-
-        "Content-Type":
-          "application/json",
-      },
-
-      body: JSON.stringify({
-        prompt,
-        seed,
-        steps: 8,
-      }),
-
-      signal:
-        AbortSignal.timeout(120000),
-    }
+  return Math.min(
+    Math.max(
+      Math.round(number),
+      minimum
+    ),
+    maximum
   );
+}
 
-  const responseText =
-    await response.text();
-
-  let responseJson;
-
-  try {
-    responseJson =
-      JSON.parse(responseText);
-  } catch {
-    throw new Error(
-      `Cloudflare returned an invalid response with status ${response.status}.`
-    );
-  }
-
+function toSafeString(
+  value,
+  fallback = ""
+) {
   if (
-    !response.ok ||
-    responseJson.success === false
+    typeof value === "string" ||
+    typeof value === "number"
   ) {
-    const cloudflareMessage =
-      responseJson.errors?.[0]
-        ?.message ||
-      responseJson.result?.error ||
-      `Cloudflare AI request failed with status ${response.status}.`;
-
-    const cloudflareError =
-      new Error(
-        cloudflareMessage
-      );
-
-    cloudflareError.statusCode =
-      response.status === 429
-        ? 429
-        : 502;
-
-    throw cloudflareError;
+    return String(value).trim();
   }
 
-  const base64Image =
-    responseJson.result?.image ||
-    responseJson.image;
-
-  if (!base64Image) {
-    throw new Error(
-      "Cloudflare AI did not return an image."
-    );
-  }
-
-  const imageBuffer = Buffer.from(
-    base64Image,
-    "base64"
-  );
-
-  if (!imageBuffer.length) {
-    throw new Error(
-      "Cloudflare AI returned an empty image."
-    );
-  }
-
-  return imageBuffer;
+  return fallback;
 }
 
-async function optimiseGeneratedBackground(
-  imageBuffer
-) {
-  try {
-    return await sharp(
-      imageBuffer,
-      {
-        failOn: "error",
-      }
-    )
-      .rotate()
-      .resize({
-        width: 1080,
-        height: 1350,
-        fit: "cover",
-        position: "centre",
-        withoutEnlargement: false,
-      })
-      .webp({
-        quality: 92,
-        effort: 5,
-      })
-      .toBuffer({
-        resolveWithObject: true,
-      });
-  } catch {
-    const error = new Error(
-      "The generated AI image could not be processed."
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+/*
+|--------------------------------------------------------------------------
+| Generate file ID
+|--------------------------------------------------------------------------
+*/
+
+function createBackgroundId() {
+  if (
+    typeof crypto.randomUUID ===
+    "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return [
+    Date.now(),
+    crypto
+      .randomBytes(8)
+      .toString("hex"),
+  ].join("-");
+}
+
+/*
+|--------------------------------------------------------------------------
+| Validate Cloudflare configuration
+|--------------------------------------------------------------------------
+*/
+
+function getCloudflareConfiguration() {
+  const accountId =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_ACCOUNT_ID
     );
 
-    error.statusCode = 502;
+  const apiToken =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_API_TOKEN
+    );
+
+  const model =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_AI_MODEL,
+      DEFAULT_AI_MODEL
+    );
+
+  if (!accountId) {
+    const error = new Error(
+      "CLOUDFLARE_ACCOUNT_ID is not configured."
+    );
+
+    error.statusCode = 500;
 
     throw error;
   }
-}
 
-async function uploadGeneratedBackground({
-  ownerKey,
-  imageBuffer,
-  promptData,
-}) {
-  const fileName =
-    createAssetFileName({
-      originalName:
-        `${promptData.style}-${promptData.mood}-background`,
-      extension: "webp",
-    });
-
-  const storagePath =
-    createAssetStoragePath({
-      assetType:
-        "ai-background",
-      ownerKey,
-      fileName,
-    });
-
-  const {
-    data: uploadData,
-    error: uploadError,
-  } = await supabase.storage
-    .from(assetsBucket)
-    .upload(
-      storagePath,
-      imageBuffer,
-      {
-        contentType:
-          "image/webp",
-
-        cacheControl:
-          "31536000",
-
-        upsert: false,
-      }
+  if (!apiToken) {
+    const error = new Error(
+      "CLOUDFLARE_API_TOKEN is not configured."
     );
 
-  if (uploadError) {
-    throw new Error(
-      `Unable to upload generated background: ${uploadError.message}`
-    );
-  }
+    error.statusCode = 500;
 
-  const uploadedPath =
-    uploadData?.path ||
-    storagePath;
-
-  const {
-    data: publicUrlData,
-  } = supabase.storage
-    .from(assetsBucket)
-    .getPublicUrl(uploadedPath);
-
-  const publicUrl =
-    publicUrlData?.publicUrl;
-
-  if (!publicUrl) {
-    await supabase.storage
-      .from(assetsBucket)
-      .remove([uploadedPath]);
-
-    throw new Error(
-      "Unable to create a public URL for the generated background."
-    );
+    throw error;
   }
 
   return {
-    uploadedPath,
-    publicUrl,
-    fileName,
+    accountId,
+    apiToken,
+    model,
   };
 }
 
-async function saveGeneratedAsset({
-  ownerKey,
-  uploadResult,
-  imageInfo,
+/*
+|--------------------------------------------------------------------------
+| Build Cloudflare inference URL
+|--------------------------------------------------------------------------
+*/
+
+function buildCloudflareUrl({
+  accountId,
+  model,
 }) {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("assets")
-    .insert({
-      owner_key: ownerKey,
+  const encodedModel = model
+    .split("/")
+    .map((segment) =>
+      encodeURIComponent(segment)
+    )
+    .join("/");
 
-      asset_type:
-        "ai-background",
-
-      bucket_name:
-        assetsBucket,
-
-      storage_path:
-        uploadResult.uploadedPath,
-
-      public_url:
-        uploadResult.publicUrl,
-
-      original_file_name:
-        uploadResult.fileName,
-
-      mime_type:
-        "image/webp",
-
-      width:
-        imageInfo.width,
-
-      height:
-        imageInfo.height,
-
-      size_bytes:
-        imageInfo.sizeBytes,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    await supabase.storage
-      .from(assetsBucket)
-      .remove([
-        uploadResult.uploadedPath,
-      ]);
-
-    throw new Error(
-      `Unable to save generated asset: ${error.message}`
-    );
-  }
-
-  return data;
+  return (
+    "https://api.cloudflare.com/" +
+    "client/v4/accounts/" +
+    `${encodeURIComponent(accountId)}/` +
+    `ai/run/${encodedModel}`
+  );
 }
 
-async function completeGenerationRecord({
-  generationId,
-  assetId,
-}) {
-  const {
-    error,
-  } = await supabase
-    .from("ai_generations")
-    .update({
-      asset_id: assetId,
-      status: "completed",
-      error_message: null,
-    })
-    .eq("id", generationId);
+/*
+|--------------------------------------------------------------------------
+| Ensure output directory
+|--------------------------------------------------------------------------
+*/
 
-  if (error) {
-    console.error(
-      "Unable to complete AI generation record:",
-      error.message
-    );
-  }
+async function ensureDirectory(
+  directory
+) {
+  await fs.promises.mkdir(
+    directory,
+    {
+      recursive: true,
+    }
+  );
+
+  return directory;
 }
 
-async function generateAIBackground({
-  ownerKey,
-  style,
-  mood,
-  primaryColor,
-  secondaryColor,
-  customPrompt,
-  seed,
-}) {
-  if (!ownerKey?.trim()) {
+/*
+|--------------------------------------------------------------------------
+| Normalize AI prompt
+|--------------------------------------------------------------------------
+*/
+
+function normalizePrompt(prompt) {
+  const safePrompt =
+    toSafeString(prompt);
+
+  if (!safePrompt) {
     const error = new Error(
-      "ownerKey is required."
+      "An AI background prompt is required."
     );
 
     error.statusCode = 400;
@@ -468,185 +207,908 @@ async function generateAIBackground({
     throw error;
   }
 
-  const normalizedOwnerKey =
-    ownerKey.trim();
+  /*
+   * FLUX.1 Schnell currently accepts
+   * prompts up to 2048 characters.
+   */
+  return safePrompt.slice(0, 2048);
+}
 
-  const promptData =
-    buildBackgroundPrompt({
-      style,
-      mood,
-      primaryColor,
-      secondaryColor,
-      customPrompt,
-    });
+/*
+|--------------------------------------------------------------------------
+| Build Cloudflare request body
+|--------------------------------------------------------------------------
+*/
 
-  const usage =
-    await checkDailyLimit(
-      normalizedOwnerKey
-    );
+function buildRequestBody({
+  prompt,
+  seed,
+  steps,
+}) {
+  return {
+    prompt:
+      normalizePrompt(prompt),
 
-  const generation =
-    await createGenerationRecord({
-      ownerKey:
-        normalizedOwnerKey,
-      promptData,
-    });
+    seed:
+      toSafeInteger(
+        seed,
+        Math.floor(
+          Math.random() *
+            2_147_483_647
+        ),
+        1,
+        2_147_483_647
+      ),
+
+    steps:
+      toSafeInteger(
+        steps,
+        DEFAULT_STEPS,
+        1,
+        MAX_STEPS
+      ),
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| Parse Cloudflare error response
+|--------------------------------------------------------------------------
+*/
+
+async function parseCloudflareError(
+  response
+) {
+  let responseBody = null;
 
   try {
-    const finalSeed =
-      Number.isInteger(
-        Number(seed)
-      )
-        ? Math.abs(
-            Number(seed)
-          )
-        : Math.floor(
-            Math.random() *
-              2147483647
-          );
+    responseBody =
+      await response.json();
+  } catch {
+    try {
+      responseBody =
+        await response.text();
+    } catch {
+      responseBody = null;
+    }
+  }
 
-    const cloudflareImage =
-      await callCloudflareAI({
-        prompt:
-          promptData.prompt,
-        seed: finalSeed,
-      });
+  const message =
+    responseBody?.errors?.[0]
+      ?.message ||
+    responseBody?.messages?.[0]
+      ?.message ||
+    responseBody?.error ||
+    responseBody?.message ||
+    (typeof responseBody ===
+    "string"
+      ? responseBody
+      : "") ||
+    `Cloudflare AI request failed with status ${response.status}.`;
 
-    const {
-      data:
-        optimisedImageBuffer,
+  const error = new Error(message);
 
-      info,
-    } =
-      await optimiseGeneratedBackground(
-        cloudflareImage
+  error.statusCode =
+    response.status >= 400 &&
+    response.status <= 599
+      ? response.status
+      : 502;
+
+  error.cloudflareResponse =
+    responseBody;
+
+  return error;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Extract Base64 image
+|--------------------------------------------------------------------------
+*/
+
+function extractBase64Image(
+  responseBody
+) {
+  if (!responseBody) {
+    return "";
+  }
+
+  /*
+   * Standard Cloudflare REST envelope:
+   *
+   * {
+   *   success: true,
+   *   result: {
+   *     image: "base64..."
+   *   }
+   * }
+   */
+  const candidates = [
+    responseBody?.result?.image,
+    responseBody?.image,
+
+    responseBody?.result
+      ?.data?.image,
+
+    responseBody?.data?.image,
+
+    responseBody?.result
+      ?.images?.[0],
+
+    responseBody?.images?.[0],
+  ];
+
+  const result =
+    candidates.find(
+      (candidate) =>
+        typeof candidate ===
+          "string" &&
+        candidate.trim()
+    ) || "";
+
+  return result
+    .replace(
+      /^data:image\/[a-zA-Z0-9.+-]+;base64,/,
+      ""
+    )
+    .trim();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Decode response body
+|--------------------------------------------------------------------------
+*/
+
+async function decodeImageResponse(
+  response
+) {
+  const contentType =
+    response.headers
+      .get("content-type")
+      ?.toLowerCase() || "";
+
+  /*
+   * Some image models may return raw
+   * image bytes instead of JSON.
+   */
+  if (
+    contentType.startsWith(
+      "image/"
+    )
+  ) {
+    const arrayBuffer =
+      await response.arrayBuffer();
+
+    const imageBuffer =
+      Buffer.from(arrayBuffer);
+
+    if (!imageBuffer.length) {
+      throw new Error(
+        "Cloudflare AI returned an empty image."
       );
-
-    const uploadResult =
-      await uploadGeneratedBackground({
-        ownerKey:
-          normalizedOwnerKey,
-
-        imageBuffer:
-          optimisedImageBuffer,
-
-        promptData,
-      });
-
-    const savedAsset =
-      await saveGeneratedAsset({
-        ownerKey:
-          normalizedOwnerKey,
-
-        uploadResult,
-
-        imageInfo: {
-          width: info.width,
-          height: info.height,
-
-          sizeBytes:
-            optimisedImageBuffer.length,
-        },
-      });
-
-    await completeGenerationRecord({
-      generationId:
-        generation.id,
-
-      assetId:
-        savedAsset.id,
-    });
+    }
 
     return {
-      generation: {
-        id: generation.id,
-
-        provider:
-          "cloudflare",
-
-        model:
-          cloudflareModel,
-
-        prompt:
-          promptData.prompt,
-
-        style:
-          promptData.style,
-
-        mood:
-          promptData.mood,
-
-        primaryColor:
-          promptData.primaryColor,
-
-        secondaryColor:
-          promptData.secondaryColor,
-
-        seed: finalSeed,
-      },
-
-      asset: {
-        id: savedAsset.id,
-
-        ownerKey:
-          savedAsset.owner_key,
-
-        assetType:
-          savedAsset.asset_type,
-
-        bucket:
-          savedAsset.bucket_name,
-
-        path:
-          savedAsset.storage_path,
-
-        publicUrl:
-          savedAsset.public_url,
-
-        mimeType:
-          savedAsset.mime_type,
-
-        width:
-          savedAsset.width,
-
-        height:
-          savedAsset.height,
-
-        sizeBytes: Number(
-          savedAsset.size_bytes ||
-            0
-        ),
-
-        createdAt:
-          savedAsset.created_at,
-      },
-
-      usage: {
-        dailyLimit,
-
-        usedToday:
-          usage.usedToday + 1,
-
-        remaining:
-          Math.max(
-            usage.remaining - 1,
-            0
-          ),
-      },
+      imageBuffer,
+      contentType,
+      rawResponse: null,
     };
-  } catch (error) {
-    await markGenerationFailed({
-      generationId:
-        generation.id,
+  }
 
-      errorMessage:
-        error.message,
-    });
+  const responseBody =
+    await response.json();
+
+  if (
+    responseBody?.success ===
+      false
+  ) {
+    const message =
+      responseBody?.errors?.[0]
+        ?.message ||
+      "Cloudflare AI could not generate the background.";
+
+    const error = new Error(
+      message
+    );
+
+    error.statusCode = 502;
+    error.cloudflareResponse =
+      responseBody;
 
     throw error;
   }
+
+  const base64Image =
+    extractBase64Image(
+      responseBody
+    );
+
+  if (!base64Image) {
+    const error = new Error(
+      "Cloudflare AI returned no image data."
+    );
+
+    error.statusCode = 502;
+    error.cloudflareResponse =
+      responseBody;
+
+    throw error;
+  }
+
+  const imageBuffer =
+    Buffer.from(
+      base64Image,
+      "base64"
+    );
+
+  if (!imageBuffer.length) {
+    const error = new Error(
+      "Cloudflare AI returned invalid image data."
+    );
+
+    error.statusCode = 502;
+
+    throw error;
+  }
+
+  return {
+    imageBuffer,
+    contentType:
+      "image/jpeg",
+
+    rawResponse:
+      responseBody,
+  };
 }
+
+/*
+|--------------------------------------------------------------------------
+| Decide whether request may be retried
+|--------------------------------------------------------------------------
+*/
+
+function isRetryableError(error) {
+  const statusCode =
+    Number(
+      error?.statusCode ||
+        error?.status
+    );
+
+  return (
+    !statusCode ||
+    statusCode === 408 ||
+    statusCode === 409 ||
+    statusCode === 425 ||
+    statusCode === 429 ||
+    statusCode >= 500
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Run one Cloudflare AI request
+|--------------------------------------------------------------------------
+*/
+
+async function requestCloudflareImage({
+  prompt,
+  seed,
+  steps,
+  timeoutMs =
+    DEFAULT_TIMEOUT_MS,
+}) {
+  const configuration =
+    getCloudflareConfiguration();
+
+  const url =
+    buildCloudflareUrl(
+      configuration
+    );
+
+  const controller =
+    new AbortController();
+
+  const timeout = setTimeout(
+    () => {
+      controller.abort();
+    },
+    toSafeInteger(
+      timeoutMs,
+      DEFAULT_TIMEOUT_MS,
+      5_000,
+      300_000
+    )
+  );
+
+  try {
+    const response = await fetch(
+      url,
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${configuration.apiToken}`,
+
+          "Content-Type":
+            "application/json",
+
+          Accept:
+            "application/json, image/*",
+        },
+
+        body: JSON.stringify(
+          buildRequestBody({
+            prompt,
+            seed,
+            steps,
+          })
+        ),
+
+        signal:
+          controller.signal,
+      }
+    );
+
+    if (!response.ok) {
+      throw await parseCloudflareError(
+        response
+      );
+    }
+
+    return await decodeImageResponse(
+      response
+    );
+  } catch (error) {
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
+      const timeoutError =
+        new Error(
+          "Cloudflare AI generation timed out."
+        );
+
+      timeoutError.statusCode =
+        504;
+
+      throw timeoutError;
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Request with retry
+|--------------------------------------------------------------------------
+*/
+
+async function requestWithRetry({
+  prompt,
+  seed,
+  steps,
+  timeoutMs,
+  retryCount =
+    DEFAULT_RETRY_COUNT,
+}) {
+  const maximumAttempts =
+    toSafeInteger(
+      retryCount,
+      DEFAULT_RETRY_COUNT,
+      0,
+      5
+    ) + 1;
+
+  let lastError = null;
+
+  for (
+    let attempt = 1;
+    attempt <= maximumAttempts;
+    attempt += 1
+  ) {
+    try {
+      return await requestCloudflareImage({
+        prompt,
+        seed,
+        steps,
+        timeoutMs,
+      });
+    } catch (error) {
+      lastError = error;
+
+      const shouldRetry =
+        attempt <
+          maximumAttempts &&
+        isRetryableError(error);
+
+      if (!shouldRetry) {
+        break;
+      }
+
+      const delay =
+        750 *
+        2 ** (attempt - 1);
+
+      console.warn(
+        `Cloudflare AI attempt ${attempt} failed. Retrying in ${delay} ms.`,
+        error.message
+      );
+
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Prepare generated background
+|--------------------------------------------------------------------------
+*/
+
+async function prepareBackground({
+  inputBuffer,
+  outputPath,
+  width,
+  height,
+  quality = 92,
+}) {
+  const safeWidth =
+    toSafeInteger(
+      width,
+      DEFAULT_WIDTH,
+      256,
+      4096
+    );
+
+  const safeHeight =
+    toSafeInteger(
+      height,
+      DEFAULT_HEIGHT,
+      256,
+      4096
+    );
+
+  await sharp(inputBuffer)
+    .rotate()
+    .resize(
+      safeWidth,
+      safeHeight,
+      {
+        fit: "cover",
+        position: "centre",
+      }
+    )
+    .jpeg({
+      quality:
+        toSafeInteger(
+          quality,
+          92,
+          40,
+          100
+        ),
+
+      chromaSubsampling:
+        "4:4:4",
+
+      mozjpeg: true,
+    })
+    .toFile(outputPath);
+
+  return {
+    width: safeWidth,
+    height: safeHeight,
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| Generate one AI background
+|--------------------------------------------------------------------------
+*/
+
+async function generateAIBackground({
+  prompt,
+
+  outputDirectory =
+    path.join(
+      __dirname,
+      "..",
+      "public",
+      "generated",
+      "backgrounds"
+    ),
+
+  filename,
+
+  width =
+    DEFAULT_WIDTH,
+
+  height =
+    DEFAULT_HEIGHT,
+
+  seed,
+
+  steps =
+    DEFAULT_STEPS,
+
+  timeoutMs =
+    DEFAULT_TIMEOUT_MS,
+
+  retryCount =
+    DEFAULT_RETRY_COUNT,
+
+  quality = 92,
+
+  metadata = {},
+} = {}) {
+  const safePrompt =
+    normalizePrompt(prompt);
+
+  await ensureDirectory(
+    outputDirectory
+  );
+
+  const backgroundId =
+    createBackgroundId();
+
+  const safeFilename =
+    filename
+      ? path.basename(
+          toSafeString(
+            filename
+          )
+        )
+      : `ai-background-${backgroundId}.jpg`;
+
+  const finalFilename =
+    path.extname(
+      safeFilename
+    )
+      ? safeFilename
+      : `${safeFilename}.jpg`;
+
+  const outputPath =
+    path.join(
+      outputDirectory,
+      finalFilename
+    );
+
+  const safeSeed =
+    toSafeInteger(
+      seed,
+      Math.floor(
+        Math.random() *
+          2_147_483_647
+      ),
+      1,
+      2_147_483_647
+    );
+
+  try {
+    const {
+      imageBuffer,
+      rawResponse,
+    } =
+      await requestWithRetry({
+        prompt: safePrompt,
+        seed: safeSeed,
+        steps,
+        timeoutMs,
+        retryCount,
+      });
+
+    const dimensions =
+      await prepareBackground({
+        inputBuffer:
+          imageBuffer,
+
+        outputPath,
+
+        width,
+        height,
+        quality,
+      });
+
+    const fileStats =
+      await fs.promises.stat(
+        outputPath
+      );
+
+    return {
+      success: true,
+
+      id: backgroundId,
+
+      filename:
+        finalFilename,
+
+      filePath:
+        outputPath,
+
+      relativePath:
+        path
+          .relative(
+            path.join(
+              __dirname,
+              ".."
+            ),
+            outputPath
+          )
+          .replace(/\\/g, "/"),
+
+      width:
+        dimensions.width,
+
+      height:
+        dimensions.height,
+
+      sizeBytes:
+        fileStats.size,
+
+      mimeType:
+        "image/jpeg",
+
+      prompt:
+        safePrompt,
+
+      seed:
+        safeSeed,
+
+      steps:
+        toSafeInteger(
+          steps,
+          DEFAULT_STEPS,
+          1,
+          MAX_STEPS
+        ),
+
+      model:
+        getCloudflareConfiguration()
+          .model,
+
+      metadata: {
+        ...metadata,
+      },
+
+      providerResponse:
+        process.env
+          .NODE_ENV ===
+        "development"
+          ? rawResponse
+          : undefined,
+    };
+  } catch (error) {
+    /*
+     * Remove a partially written file
+     * when image processing fails.
+     */
+    try {
+      await fs.promises.unlink(
+        outputPath
+      );
+    } catch {
+      // File may not exist.
+    }
+
+    const serviceError =
+      new Error(
+        `Unable to generate AI background: ${error.message}`
+      );
+
+    serviceError.statusCode =
+      error.statusCode ||
+      error.status ||
+      502;
+
+    serviceError.cause =
+      error;
+
+    throw serviceError;
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Generate multiple AI backgrounds
+|--------------------------------------------------------------------------
+*/
+
+async function generateAIBackgrounds({
+  prompts = [],
+
+  outputDirectory,
+
+  width =
+    DEFAULT_WIDTH,
+
+  height =
+    DEFAULT_HEIGHT,
+
+  steps =
+    DEFAULT_STEPS,
+
+  timeoutMs =
+    DEFAULT_TIMEOUT_MS,
+
+  retryCount =
+    DEFAULT_RETRY_COUNT,
+
+  quality = 92,
+
+  /*
+   * Keep concurrency low because each
+   * image request uses GPU inference.
+   */
+  concurrency = 2,
+
+  metadata = {},
+} = {}) {
+  if (
+    !Array.isArray(prompts) ||
+    prompts.length === 0
+  ) {
+    const error = new Error(
+      "At least one AI background prompt is required."
+    );
+
+    error.statusCode = 400;
+
+    throw error;
+  }
+
+  const safePrompts =
+    prompts
+      .map((prompt) =>
+        normalizePrompt(prompt)
+      )
+      .filter(Boolean);
+
+  const safeConcurrency =
+    toSafeInteger(
+      concurrency,
+      2,
+      1,
+      4
+    );
+
+  const results =
+    new Array(
+      safePrompts.length
+    );
+
+  let currentIndex = 0;
+
+  async function worker() {
+    while (
+      currentIndex <
+      safePrompts.length
+    ) {
+      const index =
+        currentIndex;
+
+      currentIndex += 1;
+
+      const prompt =
+        safePrompts[index];
+
+      results[index] =
+        await generateAIBackground({
+          prompt,
+
+          outputDirectory,
+
+          filename:
+            `ai-background-${Date.now()}-${index + 1}.jpg`,
+
+          width,
+          height,
+          steps,
+          timeoutMs,
+          retryCount,
+          quality,
+
+          metadata: {
+            ...metadata,
+
+            variationIndex:
+              index,
+
+            variationNumber:
+              index + 1,
+          },
+        });
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length: Math.min(
+          safeConcurrency,
+          safePrompts.length
+        ),
+      },
+      () => worker()
+    )
+  );
+
+  return results;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Test Cloudflare AI configuration
+|--------------------------------------------------------------------------
+*/
+
+function getAIBackgroundServiceStatus() {
+  const accountId =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_ACCOUNT_ID
+    );
+
+  const apiToken =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_API_TOKEN
+    );
+
+  const model =
+    toSafeString(
+      process.env
+        .CLOUDFLARE_AI_MODEL,
+      DEFAULT_AI_MODEL
+    );
+
+  return {
+    configured:
+      Boolean(
+        accountId &&
+        apiToken
+      ),
+
+    accountConfigured:
+      Boolean(accountId),
+
+    tokenConfigured:
+      Boolean(apiToken),
+
+    model,
+
+    outputSize: {
+      width:
+        DEFAULT_WIDTH,
+
+      height:
+        DEFAULT_HEIGHT,
+    },
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
+| Exports
+|--------------------------------------------------------------------------
+*/
 
 module.exports = {
   generateAIBackground,
+
+  generateAIBackgrounds,
+
+  getAIBackgroundServiceStatus,
+
+  DEFAULT_AI_MODEL,
+
+  DEFAULT_WIDTH,
+
+  DEFAULT_HEIGHT,
 };
