@@ -220,9 +220,16 @@ app.use(
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+     const normalizedRequestOrigin =
+  normalizeOrigin(origin);
+
+if (
+  allowedOrigins.includes(
+    normalizedRequestOrigin
+  )
+) {
+  return callback(null, true);
+}
 
       const corsError = new Error(
         `CORS blocked request from origin: ${origin}`
