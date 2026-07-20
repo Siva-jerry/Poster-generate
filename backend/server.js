@@ -173,16 +173,25 @@ requiredDirectories.forEach(
 |--------------------------------------------------------------------------
 */
 
+function normalizeOrigin(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\/+$/, "");
+}
+
 const deployedFrontendOrigins = String(
   FRONTEND_URL || ""
 )
   .split(",")
-  .map((origin) => origin.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
 
 const allowedOrigins = Array.from(
   new Set([
     ...deployedFrontendOrigins,
+
+    // Production frontend
+    "https://poster-generate.vercel.app",
 
     // React development
     "http://localhost:3000",
@@ -191,7 +200,7 @@ const allowedOrigins = Array.from(
     // Vite development
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-  ])
+  ].map(normalizeOrigin))
 );
 
 /*
