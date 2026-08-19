@@ -1,6 +1,10 @@
-const API_BASE_URL =
+const rawApiUrl =
   import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
   "http://localhost:5000";
+
+// Ensure clean base without trailing slash or duplicate /api prefix
+const API_BASE_URL = rawApiUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
 /*
 |--------------------------------------------------------------------------
@@ -9,8 +13,9 @@ const API_BASE_URL =
 */
 
 async function request(url, options = {}) {
+  const cleanEndpoint = url.startsWith("/") ? url : `/${url}`;
   const response = await fetch(
-    `${API_BASE_URL}${url}`,
+    `${API_BASE_URL}${cleanEndpoint}`,
     options
   );
 
