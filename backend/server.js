@@ -47,6 +47,7 @@ const posterRoutes = require(
 );
 
 const app = express();
+app.set("trust proxy", 1);
 
 /*
 |--------------------------------------------------------------------------
@@ -209,37 +210,29 @@ const allowedOrigins = Array.from(
 |--------------------------------------------------------------------------
 */
 
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  const normalized = normalizeOrigin(origin);
+  if (
+    allowedOrigins.includes(normalized) ||
+    normalized.endsWith(".vercel.app") ||
+    normalized.includes("vercel.app") ||
+    normalized.includes("localhost") ||
+    normalized.includes("127.0.0.1") ||
+    normalized.includes("onrender.com") ||
+    FRONTEND_URL === "*" ||
+    process.env.NODE_ENV !== "production"
+  ) {
+    return true;
+  }
+  return true; // Allow all origins for this public poster generation API
+}
+
 app.use(
   cors({
     origin(origin, callback) {
-      /*
-       * Postman, server-to-server requests and direct browser
-       * navigation may not send an Origin header.
-       */
-      if (!origin) {
-        return callback(null, true);
-      }
-
-     const normalizedRequestOrigin =
-  normalizeOrigin(origin);
-
-if (
-  allowedOrigins.includes(
-    normalizedRequestOrigin
-  )
-) {
-  return callback(null, true);
-}
-
-      const corsError = new Error(
-        `CORS blocked request from origin: ${origin}`
-      );
-
-      corsError.statusCode = 403;
-
-      return callback(corsError);
+      return callback(null, true);
     },
-
     methods: [
       "GET",
       "POST",
@@ -248,22 +241,53 @@ if (
       "DELETE",
       "OPTIONS",
     ],
-
     allowedHeaders: [
       "Content-Type",
       "Authorization",
       "x-edit-token",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
     ],
-
     exposedHeaders: [
       "Content-Length",
       "Content-Type",
+      "ETag",
     ],
-
     credentials: false,
     optionsSuccessStatus: 204,
   })
 );
+
+app.options("*", cors());
+
+/*
+|--------------------------------------------------------------------------
+| Explicit CORS and Preflight handler middleware
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-edit-token, Accept, Origin, X-Requested-With"
+  );
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Content-Length, Content-Type, ETag"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
 /*
 |--------------------------------------------------------------------------
 | Request body parsers
@@ -435,6 +459,17 @@ app.use(
     console.error(
       "Server error:",
       error
+    );
+
+    const origin = req.headers?.origin || "*";
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, x-edit-token, Accept, Origin, X-Requested-With"
     );
 
     if (res.headersSent) {
