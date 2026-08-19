@@ -7,8 +7,10 @@ import {
   Redo2,
   Share2,
   Undo2,
+  Sparkles,
+  Check,
 } from "lucide-react";
-
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Logo from "../common/Logo";
@@ -23,8 +25,19 @@ function EditorHeader({
   onUndo,
   onRedo,
   onDownload,
+  onOpenAI,
 }) {
   const navigate = useNavigate();
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [fileFormat, setFileFormat] = useState("png");
+  const [isHD, setIsHD] = useState(true);
+
+  const handleDownloadClick = () => {
+    if (typeof onDownload === "function") {
+      onDownload(fileFormat, isHD ? 2 : 1);
+    }
+    setDownloadModalOpen(false);
+  };
 
   return (
     <header className="editor-header">
@@ -32,10 +45,12 @@ function EditorHeader({
         <button
           type="button"
           className="editor-header__back"
-          onClick={() => navigate("/templates")}
-          aria-label="Back to templates"
+          onClick={() => navigate("/create")}
+          aria-label="Back to Create"
+          title="Back to Generator"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
+          <span className="editor-header__back-text">Back</span>
         </button>
 
         <Logo compact />
@@ -43,16 +58,14 @@ function EditorHeader({
         <div className="editor-header__document">
           <button type="button">
             <span>{title}</span>
-            <ChevronDown size={15} />
           </button>
 
           <div className="editor-header__save-state">
-            <Cloud size={14} />
-
+            <Cloud size={13} />
             <span>
               {saving
                 ? "Saving changes..."
-                : "All changes saved"}
+                : "All changes saved to canvas"}
             </span>
           </div>
         </div>
@@ -64,8 +77,9 @@ function EditorHeader({
           disabled={!canUndo}
           onClick={onUndo}
           aria-label="Undo"
+          title="Undo (Ctrl+Z)"
         >
-          <Undo2 size={19} />
+          <Undo2 size={18} />
         </button>
 
         <button
@@ -73,36 +87,92 @@ function EditorHeader({
           disabled={!canRedo}
           onClick={onRedo}
           aria-label="Redo"
+          title="Redo (Ctrl+Y)"
         >
-          <Redo2 size={19} />
+          <Redo2 size={18} />
         </button>
       </div>
 
       <div className="editor-header__right">
-        <button
-          type="button"
-          className="editor-header__share"
-        >
-          <Share2 size={17} />
-          <span>Share</span>
-        </button>
+        {onOpenAI && (
+          <button
+            type="button"
+            className="editor-header__ai-btn"
+            onClick={onOpenAI}
+            title="AI Magic Studio"
+          >
+            <Sparkles size={16} />
+            <span>AI Studio</span>
+          </button>
+        )}
 
-        <button
-          type="button"
-          className="editor-header__download"
-          onClick={onDownload}
-        >
-          <Download size={17} />
-          <span>Download</span>
-        </button>
+        <div className="editor-header__download-wrapper">
+          <button
+            type="button"
+            className="editor-header__download"
+            onClick={() => setDownloadModalOpen(!downloadModalOpen)}
+          >
+            <Download size={16} />
+            <span>Download</span>
+            <ChevronDown size={14} />
+          </button>
 
-        <button
-          type="button"
-          className="editor-header__more"
-          aria-label="More options"
-        >
-          <MoreHorizontal size={20} />
-        </button>
+          {downloadModalOpen && (
+            <div className="editor-header__download-modal">
+              <div className="editor-header__modal-header">
+                <strong>Download Design</strong>
+                <span>Canva Export Quality</span>
+              </div>
+
+              <div className="editor-header__modal-section">
+                <label>File Type</label>
+                <div className="editor-header__format-selector">
+                  <button
+                    type="button"
+                    className={fileFormat === "png" ? "active" : ""}
+                    onClick={() => setFileFormat("png")}
+                  >
+                    <span>PNG</span>
+                    <small>High resolution graphic</small>
+                  </button>
+                  <button
+                    type="button"
+                    className={fileFormat === "jpg" ? "active" : ""}
+                    onClick={() => setFileFormat("jpg")}
+                  >
+                    <span>JPG</span>
+                    <small>Standard image file</small>
+                  </button>
+                </div>
+              </div>
+
+              <div className="editor-header__modal-section">
+                <label>Quality & Resolution</label>
+                <div className="editor-header__hd-toggle">
+                  <input
+                    type="checkbox"
+                    id="hd-toggle"
+                    checked={isHD}
+                    onChange={(e) => setIsHD(e.target.checked)}
+                  />
+                  <label htmlFor="hd-toggle">
+                    <strong>2x Ultra-HD Resolution</strong>
+                    <small>2160 × 2700 px (Best for printing)</small>
+                  </label>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="editor-header__confirm-download"
+                onClick={handleDownloadClick}
+              >
+                <Download size={16} />
+                <span>Download {fileFormat.toUpperCase()}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

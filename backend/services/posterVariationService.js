@@ -44,6 +44,9 @@ const SUPPORTED_STYLES = [
   "sports",
   "neon",
   "traditional",
+  "minimal",
+  "mix",
+  "all",
 ];
 
 /*
@@ -479,6 +482,21 @@ function resolveStylePalette(
         text: "#FFFFFF",
       },
     ],
+
+    minimal: [
+      {
+        primary: "#D4AF37",
+        secondary: "#18181B",
+        accent: "#F4F4F5",
+        text: "#FFFFFF",
+      },
+      {
+        primary: "#E4E4E7",
+        secondary: "#09090B",
+        accent: "#FAFAFA",
+        text: "#FFFFFF",
+      },
+    ],
   };
 
   const stylePalettes =
@@ -634,6 +652,13 @@ function resolveDecorationPreset(
       "rangoli-pattern",
       "warm-bokeh",
     ],
+
+    minimal: [
+      "geometric-lines",
+      "clean-grid",
+      "studio-lighting",
+      "minimal-corners",
+    ],
   };
 
   const availablePresets =
@@ -736,6 +761,28 @@ async function composeVariations({
       4
     );
 
+  const STYLES_SEQUENCE = [
+    "luxury",
+    "modern",
+    "floral",
+    "sports",
+    "neon",
+    "cinematic",
+    "minimal",
+    "traditional",
+  ];
+
+  const ARCHETYPE_TITLES = {
+    luxury: "👑 Royal VIP Stage",
+    modern: "⚡ Mass Hero Flex",
+    floral: "📸 Aesthetic Polaroid",
+    sports: "🏆 Varsity Champion",
+    neon: "🔮 Cyberpunk Neon",
+    cinematic: "🎬 Hollywood Blockbuster",
+    minimal: "🏛️ Minimalist Swiss",
+    traditional: "🪔 Traditional Palace",
+  };
+
   let currentIndex = 0;
 
   async function worker() {
@@ -751,9 +798,14 @@ async function composeVariations({
       const background =
         backgrounds[index];
 
+      const effectiveStyle =
+        style === "mix" || style === "all"
+          ? STYLES_SEQUENCE[index % STYLES_SEQUENCE.length]
+          : style;
+
       const palette =
         resolveStylePalette(
-          style,
+          effectiveStyle,
           index
         );
 
@@ -762,7 +814,7 @@ async function composeVariations({
 
       const decorationPreset =
         resolveDecorationPreset(
-          style,
+          effectiveStyle,
           index
         );
 
@@ -781,7 +833,7 @@ async function composeVariations({
             width,
             height,
 
-            style,
+            style: effectiveStyle,
 
             palette,
 
@@ -811,6 +863,9 @@ async function composeVariations({
 
               layoutId:
                 layout.id,
+
+              archetype:
+                ARCHETYPE_TITLES[effectiveStyle] || effectiveStyle,
             },
           });
 
@@ -824,17 +879,14 @@ async function composeVariations({
           variationNumber:
             index + 1,
 
-          style,
+          style: effectiveStyle,
+
+          archetypeTitle:
+            ARCHETYPE_TITLES[effectiveStyle] || `${effectiveStyle.toUpperCase()} Style`,
 
           title:
             composedPoster.title ||
-            `${style
-              .charAt(0)
-              .toUpperCase()}${style.slice(
-              1
-            )} Variation ${
-              index + 1
-            }`,
+            `${ARCHETYPE_TITLES[effectiveStyle] || effectiveStyle} (Var ${index + 1})`,
 
           filename:
             composedPoster.filename,

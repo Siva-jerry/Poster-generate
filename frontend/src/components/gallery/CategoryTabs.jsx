@@ -5,7 +5,10 @@ import {
   Gem,
   GraduationCap,
   Grid2X2,
+  Palette,
+  PartyPopper,
   Rocket,
+  Sparkles,
   Trophy,
   Zap,
 } from "lucide-react";
@@ -29,16 +32,6 @@ const categoryItems = [
     icon: Clapperboard,
   },
   {
-    id: "neon",
-    label: "Neon",
-    icon: Zap,
-  },
-  {
-    id: "floral",
-    label: "Floral",
-    icon: Flower2,
-  },
-  {
     id: "college",
     label: "College",
     icon: GraduationCap,
@@ -49,14 +42,39 @@ const categoryItems = [
     icon: Trophy,
   },
   {
+    id: "neon",
+    label: "Neon",
+    icon: Zap,
+  },
+  {
     id: "magazine",
     label: "Magazine",
     icon: BriefcaseBusiness,
   },
   {
+    id: "creative",
+    label: "Creative",
+    icon: Palette,
+  },
+  {
+    id: "floral",
+    label: "Floral",
+    icon: Flower2,
+  },
+  {
+    id: "birthday",
+    label: "Celebration",
+    icon: PartyPopper,
+  },
+  {
     id: "futuristic",
     label: "Future",
     icon: Rocket,
+  },
+  {
+    id: "modern",
+    label: "Modern",
+    icon: Sparkles,
   },
 ];
 

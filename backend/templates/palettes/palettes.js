@@ -3,7 +3,7 @@ const palettes = [
     id: "black-gold",
     name: "Black Gold",
     category: "luxury",
-    tags: ["black", "gold", "dark", "premium"],
+    tags: ["black", "gold", "dark", "premium", "luxury"],
     colors: {
       background: "#080808",
       backgroundSecondary: "#241803",
@@ -23,8 +23,8 @@ const palettes = [
   {
     id: "royal-blue",
     name: "Royal Blue",
-    category: "premium",
-    tags: ["blue", "royal", "dark", "clean"],
+    category: "college",
+    tags: ["blue", "royal", "college", "clean", "graduate"],
     colors: {
       background: "#03122F",
       backgroundSecondary: "#0B3C91",
@@ -45,7 +45,7 @@ const palettes = [
     id: "purple-neon",
     name: "Purple Neon",
     category: "neon",
-    tags: ["purple", "pink", "neon", "modern"],
+    tags: ["purple", "pink", "neon", "modern", "glow"],
     colors: {
       background: "#12051F",
       backgroundSecondary: "#44106D",
@@ -66,7 +66,7 @@ const palettes = [
     id: "rose-pink",
     name: "Rose Pink",
     category: "floral",
-    tags: ["pink", "rose", "soft", "elegant"],
+    tags: ["pink", "rose", "soft", "elegant", "floral"],
     colors: {
       background: "#FFF3F7",
       backgroundSecondary: "#FFD7E5",
@@ -87,7 +87,7 @@ const palettes = [
     id: "emerald-luxury",
     name: "Emerald Luxury",
     category: "luxury",
-    tags: ["green", "emerald", "gold", "premium"],
+    tags: ["green", "emerald", "gold", "premium", "luxury"],
     colors: {
       background: "#031A15",
       backgroundSecondary: "#07533E",
@@ -108,7 +108,7 @@ const palettes = [
     id: "sunset-orange",
     name: "Sunset Orange",
     category: "creative",
-    tags: ["orange", "red", "bright", "energetic"],
+    tags: ["orange", "red", "bright", "energetic", "creative"],
     colors: {
       background: "#30100B",
       backgroundSecondary: "#B32C16",
@@ -128,8 +128,8 @@ const palettes = [
   {
     id: "minimal-cream",
     name: "Minimal Cream",
-    category: "minimal",
-    tags: ["cream", "light", "minimal", "editorial"],
+    category: "magazine",
+    tags: ["cream", "light", "minimal", "editorial", "magazine"],
     colors: {
       background: "#F8F3E8",
       backgroundSecondary: "#E9DFCB",
@@ -150,7 +150,7 @@ const palettes = [
     id: "cyan-future",
     name: "Cyan Future",
     category: "futuristic",
-    tags: ["cyan", "blue", "future", "technology"],
+    tags: ["cyan", "blue", "future", "technology", "cyber"],
     colors: {
       background: "#02151B",
       backgroundSecondary: "#043F4C",
@@ -164,6 +164,174 @@ const palettes = [
       type: "linear",
       angle: 135,
       colors: ["#011016", "#064E5D", "#02151B"],
+    },
+  },
+
+  {
+    id: "crimson-velvet",
+    name: "Crimson Velvet",
+    category: "cinematic",
+    tags: ["red", "crimson", "cinema", "bold", "dramatic"],
+    colors: {
+      background: "#180205",
+      backgroundSecondary: "#520914",
+      primary: "#FF2A4D",
+      secondary: "#FFA3B1",
+      text: "#FFFFFF",
+      mutedText: "#FCD2D8",
+      accent: "#FFD700",
+    },
+    gradient: {
+      type: "linear",
+      angle: 140,
+      colors: ["#140103", "#570A15", "#180205"],
+    },
+  },
+
+  {
+    id: "cyberpunk-violet",
+    name: "Cyberpunk Violet",
+    category: "neon",
+    tags: ["cyberpunk", "violet", "neon", "electric", "matrix"],
+    colors: {
+      background: "#0D0221",
+      backgroundSecondary: "#261447",
+      primary: "#FF3864",
+      secondary: "#2DE2E6",
+      text: "#FFFFFF",
+      mutedText: "#C4B5FD",
+      accent: "#F706CF",
+    },
+    gradient: {
+      type: "linear",
+      angle: 135,
+      colors: ["#0D0221", "#331657", "#05010E"],
+    },
+  },
+
+  {
+    id: "athletic-navy-gold",
+    name: "Athletic Navy & Gold",
+    category: "sports",
+    tags: ["sports", "navy", "gold", "champion", "energy"],
+    colors: {
+      background: "#0A1128",
+      backgroundSecondary: "#1C3166",
+      primary: "#FFC72C",
+      secondary: "#FFFFFF",
+      text: "#FFFFFF",
+      mutedText: "#CCD7E8",
+      accent: "#FF5900",
+    },
+    gradient: {
+      type: "linear",
+      angle: 135,
+      colors: ["#070D1F", "#1A2E61", "#09122C"],
+    },
+  },
+
+  {
+    id: "vintage-sepia",
+    name: "Vintage Sepia",
+    category: "creative",
+    tags: ["sepia", "vintage", "retro", "classic", "warm"],
+    colors: {
+      background: "#281E19",
+      backgroundSecondary: "#4E3629",
+      primary: "#E0B589",
+      secondary: "#F4E3D7",
+      text: "#FFF9F4",
+      mutedText: "#D4BDB0",
+      accent: "#D68C45",
+    },
+    gradient: {
+      type: "linear",
+      angle: 145,
+      colors: ["#211713", "#523B2D", "#281E19"],
+    },
+  },
+
+  {
+    id: "champagne-luxe",
+    name: "Champagne Luxe",
+    category: "luxury",
+    tags: ["champagne", "white", "gold", "deluxe", "glamour"],
+    colors: {
+      background: "#FAF7F2",
+      backgroundSecondary: "#EDE3D4",
+      primary: "#B38728",
+      secondary: "#C49746",
+      text: "#1E1A17",
+      mutedText: "#6E6258",
+      accent: "#D4AF37",
+    },
+    gradient: {
+      type: "linear",
+      angle: 140,
+      colors: ["#FFFDF9", "#EDE2D1", "#FAF6EF"],
+    },
+  },
+
+  {
+    id: "midnight-amethyst",
+    name: "Midnight Amethyst",
+    category: "cinematic",
+    tags: ["amethyst", "deep-purple", "mystic", "cinematic", "gem"],
+    colors: {
+      background: "#090314",
+      backgroundSecondary: "#230D42",
+      primary: "#D896FF",
+      secondary: "#EEDBFF",
+      text: "#FFFFFF",
+      mutedText: "#DAC9EE",
+      accent: "#FFE066",
+    },
+    gradient: {
+      type: "linear",
+      angle: 145,
+      colors: ["#07020E", "#2B1152", "#0C041A"],
+    },
+  },
+
+  {
+    id: "forest-sage",
+    name: "Forest Sage",
+    category: "floral",
+    tags: ["sage", "forest", "green", "botanical", "calm"],
+    colors: {
+      background: "#122019",
+      backgroundSecondary: "#1E3B2E",
+      primary: "#98D8AA",
+      secondary: "#E8FFEB",
+      text: "#FFFFFF",
+      mutedText: "#BDD8C8",
+      accent: "#F7D070",
+    },
+    gradient: {
+      type: "linear",
+      angle: 140,
+      colors: ["#0D1913", "#234435", "#11211A"],
+    },
+  },
+
+  {
+    id: "tokyo-night",
+    name: "Tokyo Night",
+    category: "futuristic",
+    tags: ["tokyo", "japan", "neon", "city", "future"],
+    colors: {
+      background: "#080B1A",
+      backgroundSecondary: "#141C3D",
+      primary: "#38EF7D",
+      secondary: "#11998E",
+      text: "#FFFFFF",
+      mutedText: "#C0D6D4",
+      accent: "#00F2FE",
+    },
+    gradient: {
+      type: "linear",
+      angle: 135,
+      colors: ["#060815", "#162045", "#090D22"],
     },
   },
 ];

@@ -285,79 +285,30 @@ function estimateTextWidth(
   );
 }
 
-function splitLongWord(
-  word,
-  maximumCharacters
-) {
-  const chunks = [];
-
-  for (
-    let index = 0;
-    index < word.length;
-    index += maximumCharacters
-  ) {
-    chunks.push(
-      word.slice(
-        index,
-        index + maximumCharacters
-      )
-    );
-  }
-
-  return chunks;
-}
-
 function wrapText({
   text,
   maximumWidth,
   fontSize,
   maximumLines = 3,
   characterRatio = 0.56,
-  ellipsis = true,
+  ellipsis = false,
 }) {
-  const safeText = toSafeString(text);
+  const safeText = toSafeString(text).replace(/\s+/g, " ").trim();
 
   if (!safeText) {
     return [];
   }
 
-  const maximumCharacters = Math.max(
-    4,
-    Math.floor(
-      maximumWidth /
-        (fontSize * characterRatio)
-    )
-  );
-
-  const sourceWords = safeText
-    .split(/\s+/)
-    .filter(Boolean);
-
-  const words = sourceWords.flatMap(
-    (word) =>
-      word.length > maximumCharacters
-        ? splitLongWord(
-            word,
-            maximumCharacters
-          )
-        : [word]
-  );
-
+  const words = safeText.split(" ").filter(Boolean);
   const lines = [];
   let currentLine = "";
   let consumedWords = 0;
 
   for (const word of words) {
-    const candidate = currentLine
-      ? `${currentLine} ${word}`
-      : word;
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
 
     if (
-      estimateTextWidth(
-        candidate,
-        fontSize,
-        characterRatio
-      ) <= maximumWidth
+      estimateTextWidth(candidate, fontSize, characterRatio) <= maximumWidth
     ) {
       currentLine = candidate;
       consumedWords += 1;
@@ -368,9 +319,7 @@ function wrapText({
       lines.push(currentLine);
     }
 
-    if (
-      lines.length >= maximumLines
-    ) {
+    if (lines.length >= maximumLines) {
       break;
     }
 
@@ -378,10 +327,7 @@ function wrapText({
     consumedWords += 1;
   }
 
-  if (
-    currentLine &&
-    lines.length < maximumLines
-  ) {
+  if (currentLine && lines.length < maximumLines) {
     lines.push(currentLine);
   }
 
@@ -390,11 +336,8 @@ function wrapText({
     consumedWords < words.length &&
     lines.length > 0
   ) {
-    const finalIndex =
-      lines.length - 1;
-
-    let finalLine =
-      lines[finalIndex];
+    const finalIndex = lines.length - 1;
+    let finalLine = lines[finalIndex];
 
     while (
       finalLine.length > 1 &&
@@ -404,18 +347,13 @@ function wrapText({
         characterRatio
       ) > maximumWidth
     ) {
-      finalLine =
-        finalLine.slice(0, -1);
+      finalLine = finalLine.slice(0, -1);
     }
 
-    lines[finalIndex] =
-      `${finalLine.trim()}...`;
+    lines[finalIndex] = `${finalLine.trim()}...`;
   }
 
-  return lines.slice(
-    0,
-    maximumLines
-  );
+  return lines.slice(0, maximumLines);
 }
 
 function findFittingFontSize({
@@ -423,16 +361,33 @@ function findFittingFontSize({
   maximumWidth,
   maximumLines = 2,
   maximumFontSize,
-  minimumFontSize,
+  minimumFontSize = 16,
   characterRatio = 0.58,
 }) {
+  const safeText = toSafeString(text).replace(/\s+/g, " ").trim();
+  const words = safeText.split(" ").filter(Boolean);
+
+  if (!words.length) {
+    return { fontSize: minimumFontSize, lines: [] };
+  }
+
   for (
     let fontSize = maximumFontSize;
     fontSize >= minimumFontSize;
-    fontSize -= 2
+    fontSize -= 1
   ) {
+    // 1. Ensure the longest individual word fits on one line without overflow
+    const longestWordWidth = Math.max(
+      ...words.map((w) => estimateTextWidth(w, fontSize, characterRatio))
+    );
+
+    if (longestWordWidth > maximumWidth) {
+      continue; // Font size too large for individual word, reduce!
+    }
+
+    // 2. Wrap into lines
     const lines = wrapText({
-      text,
+      text: safeText,
       maximumWidth,
       fontSize,
       maximumLines,
@@ -440,48 +395,39 @@ function findFittingFontSize({
       ellipsis: false,
     });
 
-    const fits = lines.every(
-      (line) =>
-        estimateTextWidth(
-          line,
-          fontSize,
-          characterRatio
-        ) <= maximumWidth
-    );
-
-    const reconstructedText = lines
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const originalText = toSafeString(
-      text
-    )
-      .replace(/\s+/g, " ")
-      .trim();
+    // 3. Verify all words are accounted for and fit inside maximumLines
+    const totalWordsRendered = lines.join(" ").split(" ").filter(Boolean).length;
 
     if (
-      fits &&
-      reconstructedText.length >=
-        originalText.length
+      totalWordsRendered === words.length &&
+      lines.length <= maximumLines
     ) {
-      return {
-        fontSize,
-        lines,
-      };
+      const allLinesFit = lines.every(
+        (line) => estimateTextWidth(line, fontSize, characterRatio) <= maximumWidth
+      );
+
+      if (allLinesFit) {
+        return {
+          fontSize,
+          lines,
+        };
+      }
     }
   }
 
+  // Graceful fallback at minimum font size
+  const fallbackLines = wrapText({
+    text: safeText,
+    maximumWidth,
+    fontSize: minimumFontSize,
+    maximumLines,
+    characterRatio,
+    ellipsis: false,
+  });
+
   return {
     fontSize: minimumFontSize,
-    lines: wrapText({
-      text,
-      maximumWidth,
-      fontSize: minimumFontSize,
-      maximumLines,
-      characterRatio,
-      ellipsis: true,
-    }),
+    lines: fallbackLines.length > 0 ? fallbackLines : [safeText],
   };
 }
 
@@ -784,101 +730,138 @@ function resolveLayoutSide({
 
 function resolvePosterLayout({
   layout = {},
+  style = "",
   width,
   height,
-  variationIndex,
+  variationIndex = 0,
   useCutout,
 }) {
-  const portraitSide =
-    resolveLayoutSide({
-      layout,
-      variationIndex,
-    });
+  const index = Number(variationIndex || 0);
 
-  const outerMargin = Math.round(
-    width * 0.055
-  );
+  // Cycle through 4 distinctly different, high-impact design archetypes
+  const ARCHETYPES = [
+    "center-stage",      // Variation 1: Royal Grand Felicitation (Symmetrical Gold & Velvet)
+    "asymmetric-split",  // Variation 2: Mass Hero Cinema Blockbuster (Dynamic Split Magazine)
+    "varsity-shield",    // Variation 3: Varsity Shield & Champion Gold (Academic Honors)
+    "minimal-editorial", // Variation 4: Modern Luxury Editorial / Vogue Minimal (High-Fashion Cover)
+  ];
 
-  const centerGap = Math.round(
-    width * 0.045
-  );
+  let archetype = layout?.archetype || "";
+  if (!archetype) {
+    archetype = ARCHETYPES[index % ARCHETYPES.length];
+  }
 
-  const contentTop = Math.round(
-    height * 0.14
-  );
+  // --- 1. ASYMMETRIC SPLIT (Dynamic Left Typography, Right Full-Height Hero) ---
+  if (archetype === "asymmetric-split") {
+    const portraitWidth = Math.round(width * 0.58);
+    const portraitHeight = Math.round(height * 0.90);
+    const portraitTop = Math.round(height * 0.08);
+    const portraitLeft = Math.round(width * 0.42);
 
-  const contentBottom = Math.round(
-    height * 0.925
-  );
+    return {
+      archetype: "asymmetric-split",
+      portraitSide: "right",
+      portrait: {
+        left: portraitLeft,
+        top: portraitTop,
+        width: portraitWidth,
+        height: portraitHeight,
+      },
+      text: {
+        left: Math.round(width * 0.05),
+        right: Math.round(width * 0.44),
+        width: Math.round(width * 0.39),
+        top: Math.round(height * 0.08),
+        bottom: Math.round(height * 0.96),
+        paddingX: 16,
+        paddingTop: 16,
+        paddingBottom: 16,
+      },
+    };
+  }
 
-  /*
-   * Portrait is intentionally smaller than before.
-   * This leaves enough room for readable text.
-   */
+  // --- 2. VARSITY SHIELD (Academic Crest & Honors) ---
+  if (archetype === "varsity-shield") {
+    const portraitWidth = Math.round(width * 0.62);
+    const portraitHeight = Math.round(height * 0.48);
+    const portraitTop = Math.round(height * 0.16);
+    const portraitLeft = Math.round((width - portraitWidth) / 2);
 
-  const portraitWidth = Math.round(
-    width * (useCutout ? 0.45 : 0.43)
-  );
+    return {
+      archetype: "varsity-shield",
+      portraitSide: "center",
+      portrait: {
+        left: portraitLeft,
+        top: portraitTop,
+        width: portraitWidth,
+        height: portraitHeight,
+      },
+      text: {
+        left: Math.round(width * 0.05),
+        right: Math.round(width * 0.95),
+        width: Math.round(width * 0.90),
+        top: Math.round(height * 0.63),
+        bottom: Math.round(height * 0.98),
+        paddingX: 20,
+        paddingTop: 14,
+        paddingBottom: 14,
+      },
+    };
+  }
 
-  const portraitHeight = Math.round(
-    height * (useCutout ? 0.67 : 0.62)
-  );
+  // --- 3. MINIMAL EDITORIAL (Vogue / High-Fashion Magazine Cover) ---
+  if (archetype === "minimal-editorial") {
+    const portraitWidth = Math.round(width * 0.70);
+    const portraitHeight = Math.round(height * 0.54);
+    const portraitTop = Math.round(height * 0.14);
+    const portraitLeft = Math.round((width - portraitWidth) / 2);
 
-  const portraitTop = Math.round(
-    height * (useCutout ? 0.255 : 0.27)
-  );
+    return {
+      archetype: "minimal-editorial",
+      portraitSide: "center",
+      portrait: {
+        left: portraitLeft,
+        top: portraitTop,
+        width: portraitWidth,
+        height: portraitHeight,
+      },
+      text: {
+        left: Math.round(width * 0.05),
+        right: Math.round(width * 0.95),
+        width: Math.round(width * 0.90),
+        top: Math.round(height * 0.65),
+        bottom: Math.round(height * 0.98),
+        paddingX: 20,
+        paddingTop: 14,
+        paddingBottom: 14,
+      },
+    };
+  }
 
-  const portraitLeft =
-    portraitSide === "left"
-      ? outerMargin
-      : width -
-        outerMargin -
-        portraitWidth;
-
-  const textLeft =
-    portraitSide === "left"
-      ? portraitLeft +
-        portraitWidth +
-        centerGap
-      : outerMargin;
-
-  const textRight =
-    portraitSide === "left"
-      ? width - outerMargin
-      : portraitLeft - centerGap;
-
-  const textWidth =
-    textRight - textLeft;
+  // --- 4. CENTER STAGE (Royal Grand Felicitation - Symmetrical Gold & Velvet Flex) ---
+  const portraitWidth = Math.round(width * 0.68);
+  const portraitHeight = Math.round(height * 0.52);
+  const portraitTop = Math.round(height * 0.13);
+  const portraitLeft = Math.round((width - portraitWidth) / 2);
 
   return {
-    portraitSide,
-
+    archetype: "center-stage",
+    portraitSide: "center",
     portrait: {
       left: portraitLeft,
       top: portraitTop,
       width: portraitWidth,
       height: portraitHeight,
     },
-
     text: {
-      left: textLeft,
-      right: textRight,
-      width: textWidth,
-
-      top: contentTop,
-      bottom: contentBottom,
-
-      paddingX: Math.round(
-        width * 0.028
-      ),
-
-      paddingTop: Math.round(
-        height * 0.027
-      ),
-
-      paddingBottom: Math.round(
-        height * 0.025
-      ),
+      left: Math.round(width * 0.04),
+      right: Math.round(width * 0.96),
+      width: Math.round(width * 0.92),
+      top: Math.round(height * 0.62),
+      bottom: Math.round(height * 0.98),
+      paddingX: 20,
+      paddingTop: 14,
+      paddingBottom: 14,
     },
   };
 }
@@ -901,11 +884,11 @@ async function prepareBackground({
       position: "centre",
     })
     .modulate({
-      brightness: 0.82,
-      saturation: 1.06,
+      brightness: 0.85,
+      saturation: 1.08,
     })
     .blur(
-      normalizeBlurSigma(0.6)
+      normalizeBlurSigma(0.5)
     )
     .png({
       compressionLevel: 9,
@@ -926,31 +909,41 @@ async function preparePortrait({
   height,
   useCutout,
 }) {
-  let imagePipeline = sharp(photoPath)
-    .rotate()
-    .resize(width, height, {
-      fit: useCutout
-        ? "contain"
-        : "cover",
+  let imagePipeline = sharp(photoPath).rotate();
 
-      position: useCutout
-        ? "south"
-        : "attention",
+  if (useCutout) {
+    try {
+      imagePipeline = imagePipeline.trim();
+    } catch {
+      // Ignore if image cannot be trimmed
+    }
 
+    imagePipeline = imagePipeline.resize(width, height, {
+      fit: "contain",
+      position: "centre",
       background: {
         r: 0,
         g: 0,
         b: 0,
         alpha: 0,
       },
-
+      withoutEnlargement: false,
+    });
+  } else {
+    imagePipeline = imagePipeline.resize(width, height, {
+      fit: "cover",
+      position: "attention",
+      background: {
+        r: 0,
+        g: 0,
+        b: 0,
+        alpha: 0,
+      },
       withoutEnlargement: false,
     });
 
-  if (!useCutout) {
     const cornerRadius = Math.round(
-      Math.min(width, height) *
-        0.055
+      Math.min(width, height) * 0.055
     );
 
     const roundedMask = Buffer.from(`
@@ -989,7 +982,7 @@ async function preparePortrait({
 
 /*
 |--------------------------------------------------------------------------
-| Lighting and contrast overlay
+| Seamless Atmospheric Vignette & Contrast Overlay (NO UGLY BOXES!)
 |--------------------------------------------------------------------------
 */
 
@@ -999,13 +992,8 @@ function createLightingOverlay({
   palette,
   posterLayout,
 }) {
-  const { portrait, portraitSide } =
-    posterLayout;
-
-  const darkSide =
-    portraitSide === "right"
-      ? "left"
-      : "right";
+  const { portrait, portraitSide } = posterLayout;
+  const isSplit = portraitSide === "right";
 
   return Buffer.from(`
     <svg
@@ -1015,112 +1003,58 @@ function createLightingOverlay({
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient
-          id="bottomShade"
-          x1="0"
-          y1="0"
-          x2="0"
-          y2="1"
-        >
-          <stop
-            offset="0%"
-            stop-color="#000000"
-            stop-opacity="0.04"
-          />
-
-          <stop
-            offset="62%"
-            stop-color="#000000"
-            stop-opacity="0.08"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="#000000"
-            stop-opacity="0.78"
-          />
+        <!-- Seamless Smooth Bottom Vignette Gradient for Symmetrical Posters -->
+        <linearGradient id="bottomSmoothVignette" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000000" stop-opacity="0.0" />
+          <stop offset="42%" stop-color="#000000" stop-opacity="0.0" />
+          <stop offset="58%" stop-color="#05020A" stop-opacity="0.45" />
+          <stop offset="72%" stop-color="#080310" stop-opacity="0.82" />
+          <stop offset="88%" stop-color="#05020A" stop-opacity="0.96" />
+          <stop offset="100%" stop-color="#020105" stop-opacity="0.99" />
         </linearGradient>
 
-        <linearGradient
-          id="textShade"
-          x1="${
-            darkSide === "left"
-              ? "0"
-              : "1"
-          }"
-          y1="0"
-          x2="${
-            darkSide === "left"
-              ? "1"
-              : "0"
-          }"
-          y2="0"
-        >
-          <stop
-            offset="0%"
-            stop-color="#000000"
-            stop-opacity="0.60"
-          />
-
-          <stop
-            offset="52%"
-            stop-color="#000000"
-            stop-opacity="0.20"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="#000000"
-            stop-opacity="0.02"
-          />
+        <!-- Seamless Smooth Left Scrim Gradient for Split Posters -->
+        <linearGradient id="leftSmoothScrim" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#05020A" stop-opacity="0.96" />
+          <stop offset="38%" stop-color="#05020A" stop-opacity="0.90" />
+          <stop offset="52%" stop-color="#05020A" stop-opacity="0.55" />
+          <stop offset="68%" stop-color="#05020A" stop-opacity="0.10" />
+          <stop offset="100%" stop-color="#05020A" stop-opacity="0.0" />
         </linearGradient>
 
-        <radialGradient id="portraitGlow">
-          <stop
-            offset="0%"
-            stop-color="${palette.primary}"
-            stop-opacity="0.34"
-          />
+        <!-- Top Header Scrim for Crisp College Banner -->
+        <linearGradient id="topSmoothScrim" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#030107" stop-opacity="0.85" />
+          <stop offset="80%" stop-color="#030107" stop-opacity="0.50" />
+          <stop offset="100%" stop-color="#030107" stop-opacity="0.0" />
+        </linearGradient>
 
-          <stop
-            offset="48%"
-            stop-color="${palette.secondary}"
-            stop-opacity="0.14"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="${palette.secondary}"
-            stop-opacity="0"
-          />
+        <!-- Ambient Radial Glow behind the Hero Cutout -->
+        <radialGradient id="portraitHeroGlow">
+          <stop offset="0%" stop-color="${palette.primary}" stop-opacity="0.45" />
+          <stop offset="45%" stop-color="${palette.secondary}" stop-opacity="0.20" />
+          <stop offset="100%" stop-color="${palette.secondary}" stop-opacity="0.0" />
         </radialGradient>
       </defs>
 
-      <rect
-        width="${width}"
-        height="${height}"
-        fill="url(#bottomShade)"
-      />
-
-      <rect
-        width="${width}"
-        height="${height}"
-        fill="url(#textShade)"
-      />
-
+      <!-- 1. Ambient Hero Backlight -->
       <ellipse
-        cx="${
-          portrait.left +
-          portrait.width / 2
-        }"
-        cy="${
-          portrait.top +
-          portrait.height * 0.48
-        }"
-        rx="${portrait.width * 0.7}"
-        ry="${portrait.height * 0.62}"
-        fill="url(#portraitGlow)"
+        cx="${portrait.left + portrait.width / 2}"
+        cy="${portrait.top + portrait.height * 0.48}"
+        rx="${portrait.width * 0.65}"
+        ry="${portrait.height * 0.58}"
+        fill="url(#portraitHeroGlow)"
       />
+
+      <!-- 2. Top Header Scrim -->
+      <rect x="0" y="0" width="${width}" height="140" fill="url(#topSmoothScrim)" />
+
+      <!-- 3. Lower / Left Seamless Vignette -->
+      ${
+        isSplit
+          ? `<rect width="${width}" height="${height}" fill="url(#leftSmoothScrim)" />`
+          : `<rect width="${width}" height="${height}" fill="url(#bottomSmoothVignette)" />`
+      }
     </svg>
   `);
 }
@@ -1163,29 +1097,6 @@ function createPortraitShadow({
             }"
           />
         </filter>
-
-        <linearGradient
-          id="frameGradient"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
-          <stop
-            offset="0%"
-            stop-color="${palette.accent}"
-          />
-
-          <stop
-            offset="50%"
-            stop-color="${palette.primary}"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="${palette.secondary}"
-          />
-        </linearGradient>
       </defs>
 
       <rect
@@ -1200,31 +1111,13 @@ function createPortraitShadow({
         }"
         filter="url(#shadow)"
       />
-
-      ${
-        useCutout
-          ? ""
-          : `
-            <rect
-              x="${canvasPadding + 2}"
-              y="${canvasPadding + 2}"
-              width="${width - 4}"
-              height="${height - 4}"
-              rx="${radius}"
-              fill="none"
-              stroke="url(#frameGradient)"
-              stroke-width="6"
-              stroke-opacity="0.88"
-            />
-          `
-      }
     </svg>
   `);
 }
 
 /*
 |--------------------------------------------------------------------------
-| Decoration overlay
+| Decoration overlay (Sparkles & Celestial Flares)
 |--------------------------------------------------------------------------
 */
 
@@ -1236,262 +1129,56 @@ function createDecorationOverlay({
   variationIndex,
   posterLayout,
 }) {
-  const preset = toSafeString(
-    decorationPreset,
-    "premium-sparkles"
-  ).toLowerCase();
-
-  const seed =
-    Number(variationIndex || 0) + 1;
-
-  const { portrait } =
-    posterLayout;
+  const seed = Number(variationIndex || 0) + 1;
+  const { portrait } = posterLayout;
 
   const particles = [];
 
-  for (
-    let index = 0;
-    index < 30;
-    index += 1
-  ) {
-    const x =
-      (index * 137 + seed * 97) %
-      width;
-
-    const y =
-      (index * 211 + seed * 149) %
-      height;
-
-    /*
-     * Do not place large particles over
-     * the central portrait face region.
-     */
+  for (let index = 0; index < 28; index += 1) {
+    const x = (index * 137 + seed * 97) % width;
+    const y = (index * 211 + seed * 149) % height;
 
     const insidePortraitCenter =
-      x > portrait.left + 45 &&
-      x <
-        portrait.left +
-          portrait.width -
-          45 &&
+      x > portrait.left + 50 &&
+      x < portrait.left + portrait.width - 50 &&
       y > portrait.top + 80 &&
-      y <
-        portrait.top +
-          portrait.height * 0.65;
+      y < portrait.top + portrait.height * 0.70;
 
     if (insidePortraitCenter) {
       continue;
     }
 
-    const radius =
-      1.4 +
-      ((index * 7) % 7) / 2;
-
-    const opacity =
-      0.18 +
-      ((index * 13) % 45) / 100;
+    const radius = (index % 3) + 1.6;
+    const opacity = (0.25 + ((index % 6) / 6) * 0.65).toFixed(2);
+    const fill = index % 3 === 0 ? palette.accent : index % 2 === 0 ? palette.primary : "#FFFFFF";
 
     particles.push(`
       <circle
         cx="${x}"
         cy="${y}"
         r="${radius}"
-        fill="${
-          index % 3 === 0
-            ? palette.accent
-            : palette.primary
-        }"
+        fill="${fill}"
         fill-opacity="${opacity}"
       />
     `);
   }
 
-  const cornerElements = `
-    <g
-      fill="none"
-      stroke="${palette.primary}"
-    >
-      <path
-        d="M 34 170 L 34 34 L 170 34"
-        stroke-width="5"
-        stroke-opacity="0.68"
-      />
-
-      <path
-        d="M ${width - 34} ${
-          height - 170
-        } L ${width - 34} ${
-          height - 34
-        } L ${width - 170} ${
-          height - 34
-        }"
-        stroke-width="5"
-        stroke-opacity="0.68"
-      />
-
-      <path
-        d="M 51 140 L 51 51 L 140 51"
-        stroke="${palette.accent}"
-        stroke-width="2"
-        stroke-opacity="0.56"
-      />
-
-      <path
-        d="M ${width - 51} ${
-          height - 140
-        } L ${width - 51} ${
-          height - 51
-        } L ${width - 140} ${
-          height - 51
-        }"
-        stroke="${palette.accent}"
-        stroke-width="2"
-        stroke-opacity="0.56"
-      />
-    </g>
-  `;
-
-  const floralElements =
-    preset.includes("floral") ||
-    preset.includes("petal")
-      ? `
-        <g
-          fill="none"
-          stroke="${palette.accent}"
-          stroke-opacity="0.48"
-        >
-          <path
-            d="M 0 210 C 120 60, 210 140, 285 0"
-            stroke-width="6"
-          />
-
-          <path
-            d="M ${width} ${
-              height - 210
-            } C ${width - 120} ${
-              height - 40
-            }, ${width - 230} ${
-              height - 110
-            }, ${width - 300} ${height}"
-            stroke-width="6"
-          />
-
-          <ellipse
-            cx="80"
-            cy="160"
-            rx="28"
-            ry="62"
-            transform="rotate(-35 80 160)"
-            fill="${palette.primary}"
-            fill-opacity="0.18"
-          />
-
-          <ellipse
-            cx="${width - 85}"
-            cy="${height - 155}"
-            rx="30"
-            ry="66"
-            transform="rotate(35 ${
-              width - 85
-            } ${height - 155})"
-            fill="${palette.primary}"
-            fill-opacity="0.18"
-          />
-        </g>
-      `
-      : "";
-
-  const neonElements =
-    preset.includes("neon") ||
-    preset.includes("cyber") ||
-    preset.includes("ring")
-      ? `
-        <g fill="none">
-          <circle
-            cx="${
-              posterLayout.portraitSide ===
-              "right"
-                ? width * 0.86
-                : width * 0.14
-            }"
-            cy="${height * 0.2}"
-            r="${width * 0.14}"
-            stroke="${palette.primary}"
-            stroke-width="9"
-            stroke-opacity="0.24"
-          />
-
-          <circle
-            cx="${
-              posterLayout.portraitSide ===
-              "right"
-                ? width * 0.86
-                : width * 0.14
-            }"
-            cy="${height * 0.2}"
-            r="${width * 0.1}"
-            stroke="${palette.accent}"
-            stroke-width="4"
-            stroke-opacity="0.34"
-          />
-        </g>
-      `
-      : "";
-
-  const sportsElements =
-    preset.includes("speed") ||
-    preset.includes("sport") ||
-    preset.includes("motion")
-      ? `
-        <g opacity="0.25">
-          <path
-            d="M -80 ${height * 0.72}
-               L ${width * 0.55} ${
-                 height * 0.42
-               }"
-            stroke="${palette.primary}"
-            stroke-width="10"
-          />
-
-          <path
-            d="M ${width * 0.48} ${height}
-               L ${width} ${height * 0.72}"
-            stroke="${palette.secondary}"
-            stroke-width="18"
-          />
-        </g>
-      `
-      : "";
-
   return Buffer.from(`
     <svg
       width="${width}"
       height="${height}"
+      viewBox="0 0 ${width} ${height}"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <filter
-          id="particleGlow"
-          x="-100%"
-          y="-100%"
-          width="300%"
-          height="300%"
-        >
-          <feGaussianBlur
-            stdDeviation="4"
-            result="blur"
-          />
-
+        <filter id="particleGlow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
       </defs>
-
-      ${cornerElements}
-      ${floralElements}
-      ${neonElements}
-      ${sportsElements}
 
       <g filter="url(#particleGlow)">
         ${particles.join("\n")}
@@ -1502,7 +1189,7 @@ function createDecorationOverlay({
 
 /*
 |--------------------------------------------------------------------------
-| Text panel
+| Text panel overlay
 |--------------------------------------------------------------------------
 */
 
@@ -1512,78 +1199,18 @@ function createTextPanelOverlay({
   textLayout,
   palette,
 }) {
-  const panelX = textLayout.left;
-  const panelY = textLayout.top;
-
-  const panelWidth =
-    textLayout.width;
-
-  const panelHeight =
-    textLayout.bottom -
-    textLayout.top;
-
   return Buffer.from(`
     <svg
       width="${width}"
       height="${height}"
       xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="glassPanel"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
-          <stop
-            offset="0%"
-            stop-color="#08050B"
-            stop-opacity="0.70"
-          />
-
-          <stop
-            offset="62%"
-            stop-color="#120B19"
-            stop-opacity="0.55"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="${palette.secondary}"
-            stop-opacity="0.23"
-          />
-        </linearGradient>
-      </defs>
-
-      <rect
-        x="${panelX}"
-        y="${panelY}"
-        width="${panelWidth}"
-        height="${panelHeight}"
-        rx="30"
-        fill="url(#glassPanel)"
-        stroke="${palette.accent}"
-        stroke-opacity="0.20"
-        stroke-width="2"
-      />
-
-      <rect
-        x="${panelX + 16}"
-        y="${panelY + 18}"
-        width="6"
-        height="${panelHeight - 36}"
-        rx="3"
-        fill="${palette.primary}"
-        fill-opacity="0.84"
-      />
-    </svg>
+    ></svg>
   `);
 }
 
 /*
 |--------------------------------------------------------------------------
-| Typography
+| Master Typography & Ornate Graphic Overlays (4 Distinct Pro Archetypes)
 |--------------------------------------------------------------------------
 */
 
@@ -1594,243 +1221,501 @@ function createTypographyOverlay({
   palette,
   textLayout,
 }) {
-  const innerLeft =
-    textLayout.left +
-    textLayout.paddingX +
-    14;
+  const archetype = textLayout?.archetype || "center-stage";
 
-  const innerRight =
-    textLayout.right -
-    textLayout.paddingX;
+  // Common sanitized text variables
+  const rawCollege = (studentInfo.collegeName || "").toUpperCase();
+  const rawHeading = (studentInfo.birthdayHeading || "HAPPY BIRTHDAY").toUpperCase();
+  const rawName = (studentInfo.name || "").toUpperCase();
+  const rawDept = (studentInfo.department || "").toUpperCase();
+  const rawQuote = studentInfo.birthdayQuote || "";
+  const rawDate = (studentInfo.date || "").toUpperCase();
 
-  const availableWidth =
-    innerRight - innerLeft;
+  const yearRollParts = [];
+  if (studentInfo.year) yearRollParts.push(studentInfo.year.toUpperCase());
+  if (studentInfo.rollNo) yearRollParts.push(`ROLL NO: ${studentInfo.rollNo}`.toUpperCase());
+  if (studentInfo.designation) yearRollParts.push(studentInfo.designation.toUpperCase());
+  const yearRollText = yearRollParts.join("   ★   ");
+  const yearRollRaw = yearRollParts.join("  •  ");
 
-  const textX = innerLeft;
-  const textAnchor = "start";
+  /*
+   * =========================================================================
+   * ARCHETYPE 2: MASS HERO CINEMA BLOCKBUSTER (Dynamic Left Typography, Right Hero)
+   * =========================================================================
+   */
+  if (archetype === "asymmetric-split") {
+    const leftCardX = textLayout.left;
+    const leftCardWidth = textLayout.width;
 
-  const headingFit =
-    findFittingFontSize({
-      text:
-        studentInfo.birthdayHeading,
-      maximumWidth:
-        availableWidth,
-      maximumLines: 2,
-      maximumFontSize: Math.round(
-        width * 0.046
-      ),
-      minimumFontSize: Math.round(
-        width * 0.027
-      ),
-      characterRatio: 0.64,
-    });
-
-  const headingFontSize =
-    headingFit.fontSize;
-
-  const headingLines =
-    headingFit.lines;
-
-  const nameFit =
-    findFittingFontSize({
-      text:
-        studentInfo.name.toUpperCase(),
-      maximumWidth:
-        availableWidth,
-      maximumLines: 2,
-      maximumFontSize: Math.round(
-        width * 0.064
-      ),
-      minimumFontSize: Math.round(
-        width * 0.037
-      ),
-      characterRatio: 0.61,
-    });
-
-  const nameFontSize =
-    nameFit.fontSize;
-
-  const nameLines =
-    nameFit.lines;
-
-  const collegeFontSize = clamp(
-    Math.round(width * 0.019),
-    17,
-    24
-  );
-
-  const detailFontSize = clamp(
-    Math.round(width * 0.021),
-    19,
-    27
-  );
-
-  const quoteFontSize = clamp(
-    Math.round(width * 0.019),
-    18,
-    25
-  );
-
-  const dateFontSize = clamp(
-    Math.round(width * 0.018),
-    17,
-    23
-  );
-
-  const collegeLines = wrapText({
-    text: studentInfo.collegeName,
-    maximumWidth: availableWidth,
-    fontSize: collegeFontSize,
-    maximumLines: 2,
-    characterRatio: 0.57,
-  });
-
-  const details = [];
-
-  if (studentInfo.department) {
-    details.push(
-      studentInfo.department.toUpperCase()
-    );
-  }
-
-  if (studentInfo.year) {
-    details.push(
-      studentInfo.year.toUpperCase()
-    );
-  }
-
-  if (studentInfo.rollNo) {
-    details.push(
-      `ROLL NO: ${studentInfo.rollNo}`.toUpperCase()
-    );
-  }
-
-  if (studentInfo.designation) {
-    details.push(
-      studentInfo.designation.toUpperCase()
-    );
-  }
-
-  const detailLines = [];
-
-  for (const detail of details) {
-    const wrapped = wrapText({
-      text: detail,
-      maximumWidth: availableWidth,
-      fontSize: detailFontSize,
+    const collegeFit = findFittingFontSize({
+      text: rawCollege,
+      maximumWidth: width * 0.90,
       maximumLines: 1,
+      maximumFontSize: 18,
+      minimumFontSize: 12,
       characterRatio: 0.57,
     });
 
-    detailLines.push(...wrapped);
+    const headingFit = findFittingFontSize({
+      text: rawHeading,
+      maximumWidth: leftCardWidth - 20,
+      maximumLines: 2,
+      maximumFontSize: 44,
+      minimumFontSize: 26,
+      characterRatio: 0.62,
+    });
 
-    if (detailLines.length >= 4) {
-      break;
-    }
+    const nameFit = findFittingFontSize({
+      text: rawName,
+      maximumWidth: leftCardWidth - 10,
+      maximumLines: 2,
+      maximumFontSize: 52,
+      minimumFontSize: 28,
+      characterRatio: 0.61,
+    });
+
+    const deptFit = findFittingFontSize({
+      text: rawDept,
+      maximumWidth: leftCardWidth - 10,
+      maximumLines: 2,
+      maximumFontSize: 18,
+      minimumFontSize: 13,
+      characterRatio: 0.57,
+    });
+
+    const quoteFontSize = 18;
+    const quoteLines = wrapText({
+      text: rawQuote,
+      maximumWidth: leftCardWidth - 20,
+      fontSize: quoteFontSize,
+      maximumLines: 5,
+      characterRatio: 0.52,
+    });
+
+    let cursorY = Math.round(height * 0.10);
+    const titleY = cursorY + headingFit.fontSize * 0.88;
+    cursorY = titleY + (headingFit.lines.length - 1) * headingFit.fontSize * 1.15 + 32;
+
+    const nameY = cursorY + nameFit.fontSize * 0.88;
+    cursorY = nameY + (nameFit.lines.length - 1) * nameFit.fontSize * 1.10 + 26;
+
+    const dividerY = cursorY;
+    cursorY += 28;
+
+    const deptY = cursorY + deptFit.fontSize * 0.85;
+    cursorY = deptY + (deptFit.lines.length - 1) * deptFit.fontSize * 1.25 + (yearRollRaw ? 28 : 20);
+
+    const yearY = cursorY;
+    cursorY += (yearRollRaw ? 36 : 14);
+
+    const quoteStartY = cursorY + quoteFontSize * 0.85 + 16;
+    const quoteLineHeight = 26;
+    cursorY = quoteStartY + (quoteLines.length - 1) * quoteLineHeight + 42;
+
+    const dateY = cursorY;
+
+    return Buffer.from(`
+      <svg
+        width="${width}"
+        height="${height}"
+        viewBox="0 0 ${width} ${height}"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="splitTitleGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="${palette.accent}" />
+            <stop offset="50%" stop-color="${palette.primary}" />
+            <stop offset="100%" stop-color="#FFFFFF" />
+          </linearGradient>
+
+          <linearGradient id="goldNameGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="35%" stop-color="${palette.accent}" />
+            <stop offset="70%" stop-color="${palette.primary}" />
+            <stop offset="100%" stop-color="#FFD700" />
+          </linearGradient>
+
+          <filter id="cinematicGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.95" />
+          </filter>
+
+          <style>
+            .split-clg { font-family: Arial, Helvetica, sans-serif; font-size: ${collegeFit.fontSize}px; font-weight: 700; letter-spacing: 2px; fill: ${palette.accent}; }
+            .split-title { font-family: Georgia, 'Times New Roman', serif; font-size: ${headingFit.fontSize}px; font-weight: 900; letter-spacing: 2px; fill: url(#splitTitleGrad); filter: url(#cinematicGlow); }
+            .split-name { font-family: Arial, Helvetica, sans-serif; font-size: ${nameFit.fontSize}px; font-weight: 900; letter-spacing: 1px; fill: url(#goldNameGrad); stroke: #000000; stroke-width: 1.5px; paint-order: stroke fill; filter: url(#cinematicGlow); }
+            .split-dept { font-family: Arial, Helvetica, sans-serif; font-size: ${deptFit.fontSize}px; font-weight: 700; letter-spacing: 1.2px; fill: ${palette.accent}; }
+            .split-year { font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1.4px; fill: #FFFFFF; }
+            .split-quote { font-family: Georgia, 'Times New Roman', serif; font-size: ${quoteFontSize}px; font-weight: 400; font-style: italic; fill: #FFFFFF; filter: url(#cinematicGlow); }
+            .split-date { font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 2px; fill: ${palette.primary}; }
+          </style>
+        </defs>
+
+        <g>
+          <!-- Top College Bar -->
+          <text x="${width / 2}" y="48" text-anchor="middle" class="split-clg">✦ ${escapeXml(collegeFit.lines[0] || rawCollege)} ✦</text>
+          <line x1="80" y1="60" x2="${width - 80}" y2="60" stroke="${palette.primary}" stroke-opacity="0.4" stroke-width="1.2" />
+
+          <!-- Left Accent Ribbon -->
+          <rect x="${leftCardX - 12}" y="${Math.round(height * 0.10)}" width="4" height="${height * 0.82}" rx="2" fill="${palette.primary}" />
+
+          <!-- Celebration Title -->
+          ${buildSvgTextLines({
+            lines: headingFit.lines,
+            x: leftCardX,
+            y: titleY,
+            lineHeight: headingFit.fontSize * 1.15,
+            textAnchor: "start",
+            className: "split-title",
+          })}
+
+          <!-- Student Name -->
+          ${buildSvgTextLines({
+            lines: nameFit.lines,
+            x: leftCardX,
+            y: nameY,
+            lineHeight: nameFit.fontSize * 1.10,
+            textAnchor: "start",
+            className: "split-name",
+          })}
+
+          <!-- Divider -->
+          <line x1="${leftCardX}" y1="${dividerY}" x2="${leftCardX + leftCardWidth}" y2="${dividerY}" stroke="${palette.primary}" stroke-width="2.5" stroke-linecap="round" />
+
+          <!-- Academic Details -->
+          ${buildSvgTextLines({
+            lines: deptFit.lines,
+            x: leftCardX,
+            y: deptY,
+            lineHeight: deptFit.fontSize * 1.25,
+            textAnchor: "start",
+            className: "split-dept",
+          })}
+
+          ${
+            yearRollRaw
+              ? `<text x="${leftCardX}" y="${yearY}" class="split-year">${escapeXml(yearRollRaw)}</text>`
+              : ""
+          }
+
+          <!-- Quote -->
+          <text x="${leftCardX}" y="${quoteStartY - 8}" font-family="Georgia, serif" font-size="32" fill="${palette.primary}">“</text>
+          ${buildSvgTextLines({
+            lines: quoteLines,
+            x: leftCardX + 16,
+            y: quoteStartY,
+            lineHeight: quoteLineHeight,
+            textAnchor: "start",
+            className: "split-quote",
+          })}
+
+          <!-- Date -->
+          ${
+            rawDate
+              ? `<text x="${leftCardX}" y="${dateY}" class="split-date">✦ ${escapeXml(rawDate)} ✦</text>`
+              : ""
+          }
+        </g>
+      </svg>
+    `);
   }
 
+  /*
+   * =========================================================================
+   * ARCHETYPE 3: VARSITY SHIELD & CREST (Academic Honor & Gold Laurels)
+   * =========================================================================
+   */
+  if (archetype === "varsity-shield") {
+    const collegeFit = findFittingFontSize({
+      text: rawCollege,
+      maximumWidth: width * 0.88,
+      maximumLines: 1,
+      maximumFontSize: 19,
+      minimumFontSize: 13,
+      characterRatio: 0.57,
+    });
+
+    const headingFit = findFittingFontSize({
+      text: rawHeading,
+      maximumWidth: width * 0.86,
+      maximumLines: 1,
+      maximumFontSize: 46,
+      minimumFontSize: 28,
+      characterRatio: 0.62,
+    });
+
+    const nameFit = findFittingFontSize({
+      text: rawName,
+      maximumWidth: width * 0.88,
+      maximumLines: 1,
+      maximumFontSize: 60,
+      minimumFontSize: 32,
+      characterRatio: 0.61,
+    });
+
+    const deptFit = findFittingFontSize({
+      text: rawDept,
+      maximumWidth: width * 0.88,
+      maximumLines: 1,
+      maximumFontSize: 20,
+      minimumFontSize: 13,
+      characterRatio: 0.57,
+    });
+
+    const quoteFontSize = 19;
+    const quoteLines = wrapText({
+      text: rawQuote,
+      maximumWidth: width * 0.84,
+      fontSize: quoteFontSize,
+      maximumLines: 3,
+      characterRatio: 0.52,
+    });
+
+    const nameY = Math.round(height * 0.69);
+    const dividerY = nameY + 20;
+    const deptY = dividerY + 34;
+    const yearY = yearRollText ? deptY + 32 : deptY;
+    const quoteStartY = (yearRollText ? yearY + 22 : deptY + 22) + quoteFontSize * 0.85 + 14;
+    const quoteLineHeight = 28;
+    const dateY = quoteStartY + (quoteLines.length - 1) * quoteLineHeight + 46;
+
+    return Buffer.from(`
+      <svg
+        width="${width}"
+        height="${height}"
+        viewBox="0 0 ${width} ${height}"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="varsityGold" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#FFE259" />
+            <stop offset="100%" stop-color="#FFA751" />
+          </linearGradient>
+
+          <filter id="varsityShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.95" />
+          </filter>
+
+          <style>
+            .varsity-tag { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 3px; fill: ${palette.primary}; }
+            .varsity-clg { font-family: Arial, Helvetica, sans-serif; font-size: ${collegeFit.fontSize}px; font-weight: 800; letter-spacing: 2.2px; fill: #FFFFFF; }
+            .varsity-title { font-family: Georgia, serif; font-size: ${headingFit.fontSize}px; font-weight: 900; letter-spacing: 3.5px; fill: url(#varsityGold); filter: url(#varsityShadow); }
+            .varsity-name { font-family: 'Times New Roman', serif; font-size: ${nameFit.fontSize}px; font-weight: 900; letter-spacing: 2px; fill: #FFFFFF; filter: url(#varsityShadow); }
+            .varsity-dept { font-family: Arial, Helvetica, sans-serif; font-size: ${deptFit.fontSize}px; font-weight: 700; letter-spacing: 1.8px; fill: ${palette.accent}; }
+            .varsity-year { font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 1.6px; fill: #FFFFFF; }
+            .varsity-quote { font-family: Georgia, serif; font-size: ${quoteFontSize}px; font-weight: 400; font-style: italic; fill: #FFFFFF; filter: url(#varsityShadow); }
+            .varsity-date { font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 2.5px; fill: ${palette.primary}; }
+          </style>
+        </defs>
+
+        <g>
+          <!-- Top Crest Tag -->
+          <text x="${width / 2}" y="38" text-anchor="middle" class="varsity-tag">★ ACADEMIC EXCELLENCE & HONORS ★</text>
+          <text x="${width / 2}" y="70" text-anchor="middle" class="varsity-clg">${escapeXml(collegeFit.lines[0] || rawCollege)}</text>
+          <line x1="120" y1="84" x2="${width - 120}" y2="84" stroke="${palette.primary}" stroke-width="1.8" />
+
+          <!-- Grand Title Ribbon -->
+          <text x="${width / 2}" y="136" text-anchor="middle" class="varsity-title">★ ${escapeXml(headingFit.lines[0] || rawHeading)} ★</text>
+
+          <!-- Student Name -->
+          <text x="${width / 2}" y="${nameY}" text-anchor="middle" class="varsity-name">${escapeXml(nameFit.lines[0] || rawName)}</text>
+
+          <!-- Golden Laurel Star Divider -->
+          <line x1="${width / 2 - 200}" y1="${dividerY}" x2="${width / 2 - 24}" y2="${dividerY}" stroke="url(#varsityGold)" stroke-width="2.5" stroke-linecap="round" />
+          <polygon points="${width / 2},${dividerY - 7} ${width / 2 + 7},${dividerY} ${width / 2},${dividerY + 7} ${width / 2 - 7},${dividerY}" fill="${palette.primary}" />
+          <line x1="${width / 2 + 24}" y1="${dividerY}" x2="${width / 2 + 200}" y2="${dividerY}" stroke="url(#varsityGold)" stroke-width="2.5" stroke-linecap="round" />
+
+          <!-- Department & Year -->
+          <text x="${width / 2}" y="${deptY}" text-anchor="middle" class="varsity-dept">${escapeXml(deptFit.lines[0] || rawDept)}</text>
+          ${
+            yearRollText
+              ? `<text x="${width / 2}" y="${yearY}" text-anchor="middle" class="varsity-year">${escapeXml(yearRollText)}</text>`
+              : ""
+          }
+
+          <!-- Quote -->
+          ${buildSvgTextLines({
+            lines: quoteLines,
+            x: width / 2,
+            y: quoteStartY,
+            lineHeight: quoteLineHeight,
+            textAnchor: "middle",
+            className: "varsity-quote",
+          })}
+
+          <!-- Date -->
+          <text x="${width / 2}" y="${dateY}" text-anchor="middle" class="varsity-date">${escapeXml(rawDate ? `✦ ${rawDate} ✦` : "✦ WITH BEST COMPLIMENTS & WISHES ✦")}</text>
+        </g>
+      </svg>
+    `);
+  }
+
+  /*
+   * =========================================================================
+   * ARCHETYPE 4: MODERN LUXURY EDITORIAL / VOGUE MINIMAL (High-Fashion Cover)
+   * =========================================================================
+   */
+  if (archetype === "minimal-editorial") {
+    const collegeFit = findFittingFontSize({
+      text: rawCollege,
+      maximumWidth: width * 0.90,
+      maximumLines: 1,
+      maximumFontSize: 16,
+      minimumFontSize: 12,
+      characterRatio: 0.57,
+    });
+
+    const nameFit = findFittingFontSize({
+      text: rawName,
+      maximumWidth: width * 0.90,
+      maximumLines: 1,
+      maximumFontSize: 64,
+      minimumFontSize: 34,
+      characterRatio: 0.61,
+    });
+
+    const deptFit = findFittingFontSize({
+      text: rawDept,
+      maximumWidth: width * 0.90,
+      maximumLines: 1,
+      maximumFontSize: 20,
+      minimumFontSize: 13,
+      characterRatio: 0.57,
+    });
+
+    const quoteFontSize = 19;
+    const quoteLines = wrapText({
+      text: rawQuote,
+      maximumWidth: width * 0.82,
+      fontSize: quoteFontSize,
+      maximumLines: 3,
+      characterRatio: 0.52,
+    });
+
+    const nameY = Math.round(height * 0.71);
+    const dividerY = nameY + 18;
+    const deptY = dividerY + 34;
+    const yearY = yearRollText ? deptY + 30 : deptY;
+    const quoteStartY = (yearRollText ? yearY + 22 : deptY + 22) + quoteFontSize * 0.85 + 14;
+    const quoteLineHeight = 28;
+    const dateY = quoteStartY + (quoteLines.length - 1) * quoteLineHeight + 46;
+
+    return Buffer.from(`
+      <svg
+        width="${width}"
+        height="${height}"
+        viewBox="0 0 ${width} ${height}"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <filter id="editorialShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.95" />
+          </filter>
+
+          <style>
+            .edit-top-title { font-family: Georgia, 'Times New Roman', serif; font-size: 52px; font-weight: 400; letter-spacing: 8px; fill: #FFFFFF; filter: url(#editorialShadow); }
+            .edit-clg { font-family: Arial, Helvetica, sans-serif; font-size: ${collegeFit.fontSize}px; font-weight: 700; letter-spacing: 3px; fill: ${palette.accent}; }
+            .edit-name { font-family: Arial, Helvetica, sans-serif; font-size: ${nameFit.fontSize}px; font-weight: 900; letter-spacing: 2px; fill: #FFFFFF; filter: url(#editorialShadow); }
+            .edit-dept { font-family: Arial, Helvetica, sans-serif; font-size: ${deptFit.fontSize}px; font-weight: 600; letter-spacing: 2px; fill: ${palette.primary}; }
+            .edit-year { font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1.8px; fill: #FFFFFF; }
+            .edit-quote { font-family: Georgia, serif; font-size: ${quoteFontSize}px; font-weight: 400; font-style: italic; fill: #FFFFFF; filter: url(#editorialShadow); }
+            .edit-date { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 800; letter-spacing: 3px; fill: ${palette.primary}; }
+          </style>
+        </defs>
+
+        <g>
+          <!-- Top Vogue Headline -->
+          <text x="${width / 2}" y="76" text-anchor="middle" class="edit-top-title">HAPPY BIRTHDAY</text>
+          <text x="${width / 2}" y="112" text-anchor="middle" class="edit-clg">${escapeXml(collegeFit.lines[0] || rawCollege)}</text>
+
+          <!-- Student Name -->
+          <text x="${width / 2}" y="${nameY}" text-anchor="middle" class="edit-name">${escapeXml(nameFit.lines[0] || rawName)}</text>
+
+          <!-- Minimalist Gold Accent Line -->
+          <line x1="${width / 2 - 120}" y1="${dividerY}" x2="${width / 2 + 120}" y2="${dividerY}" stroke="${palette.primary}" stroke-width="2" />
+
+          <!-- Department & Year -->
+          <text x="${width / 2}" y="${deptY}" text-anchor="middle" class="edit-dept">${escapeXml(deptFit.lines[0] || rawDept)}</text>
+          ${
+            yearRollText
+              ? `<text x="${width / 2}" y="${yearY}" text-anchor="middle" class="edit-year">${escapeXml(yearRollText)}</text>`
+              : ""
+          }
+
+          <!-- Quote -->
+          ${buildSvgTextLines({
+            lines: quoteLines,
+            x: width / 2,
+            y: quoteStartY,
+            lineHeight: quoteLineHeight,
+            textAnchor: "middle",
+            className: "edit-quote",
+          })}
+
+          <!-- Date -->
+          <text x="${width / 2}" y="${dateY}" text-anchor="middle" class="edit-date">${escapeXml(rawDate ? `✦ ${rawDate} ✦` : "✦ SPECIAL CELEBRATION EDITION ✦")}</text>
+        </g>
+      </svg>
+    `);
+  }
+
+  /*
+   * =========================================================================
+   * ARCHETYPE 1: ROYAL GRAND FELICITATION (Classic Symmetrical Gold & Velvet Flex)
+   * =========================================================================
+   */
+
+  const collegeFit = findFittingFontSize({
+    text: rawCollege,
+    maximumWidth: width * 0.88,
+    maximumLines: 1,
+    maximumFontSize: 19,
+    minimumFontSize: 13,
+    characterRatio: 0.57,
+  });
+
+  const headingFit = findFittingFontSize({
+    text: rawHeading,
+    maximumWidth: width * 0.88,
+    maximumLines: 1,
+    maximumFontSize: 52,
+    minimumFontSize: 30,
+    characterRatio: 0.62,
+  });
+
+  const nameFit = findFittingFontSize({
+    text: rawName,
+    maximumWidth: width * 0.90,
+    maximumLines: 1,
+    maximumFontSize: 64,
+    minimumFontSize: 34,
+    characterRatio: 0.61,
+  });
+
+  const deptFit = findFittingFontSize({
+    text: rawDept ? rawDept : "STUDENT OF DISTINCTION",
+    maximumWidth: width * 0.90,
+    maximumLines: 1,
+    maximumFontSize: 22,
+    minimumFontSize: 14,
+    characterRatio: 0.57,
+  });
+
+  const quoteFontSize = 20;
   const quoteLines = wrapText({
-    text:
-      studentInfo.birthdayQuote,
-    maximumWidth:
-      availableWidth - 32,
+    text: rawQuote,
+    maximumWidth: width * 0.84,
     fontSize: quoteFontSize,
-    maximumLines: 4,
+    maximumLines: 3,
     characterRatio: 0.52,
   });
 
-  /*
-   * Vertical flow is calculated sequentially.
-   * Every section begins after the previous section.
-   */
-
-  let cursorY =
-    textLayout.top +
-    textLayout.paddingTop +
-    20;
-
-  const collegeY = cursorY;
-
-  cursorY +=
-    collegeLines.length > 0
-      ? collegeLines.length *
-          collegeFontSize *
-          1.25 +
-        18
-      : 0;
-
-  const headingY = cursorY;
-
-  const headingLineHeight =
-    headingFontSize * 1.18;
-
-  cursorY +=
-    headingLines.length *
-      headingLineHeight +
-    25;
-
-  const nameY = cursorY;
-
-  const nameLineHeight =
-    nameFontSize * 1.08;
-
-  cursorY +=
-    nameLines.length *
-      nameLineHeight +
-    30;
-
-  const dividerY = cursorY;
-
-  cursorY += 38;
-
-  const detailsY = cursorY;
-
-  const detailLineHeight =
-    detailFontSize * 1.45;
-
-  cursorY +=
-    detailLines.length *
-      detailLineHeight +
-    28;
-
-  /*
-   * Quote is pushed toward the lower part,
-   * but never outside the panel.
-   */
-
-  const quoteRequiredHeight =
-    quoteLines.length *
-      quoteFontSize *
-      1.45 +
-    70 +
-    (studentInfo.date ? 42 : 0);
-
-  const maximumQuoteStart =
-    textLayout.bottom -
-    textLayout.paddingBottom -
-    quoteRequiredHeight;
-
-  const quoteY = Math.max(
-    cursorY,
-    maximumQuoteStart
-  );
-
-  const quotePanelY =
-    quoteY - 32;
-
-  const quotePanelHeight =
-    quoteLines.length *
-      quoteFontSize *
-      1.45 +
-    58 +
-    (studentInfo.date ? 40 : 0);
-
-  const dateY =
-    quoteY +
-    quoteLines.length *
-      quoteFontSize *
-      1.45 +
-    26;
+  const nameY = Math.round(height * 0.68);
+  const dividerY = nameY + 20;
+  const deptY = dividerY + 36;
+  const yearY = yearRollText ? deptY + 32 : deptY;
+  const quoteStartY = (yearRollText ? yearY + 24 : deptY + 24) + quoteFontSize * 0.85 + 14;
+  const quoteLineHeight = 30;
+  const dateY = quoteStartY + (quoteLines.length - 1) * quoteLineHeight + 48;
 
   return Buffer.from(`
     <svg
@@ -1840,315 +1725,74 @@ function createTypographyOverlay({
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient
-          id="titleGradient"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="0"
-        >
-          <stop
-            offset="0%"
-            stop-color="${palette.accent}"
-          />
-
-          <stop
-            offset="50%"
-            stop-color="${palette.primary}"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="#FFFFFF"
-          />
+        <linearGradient id="goldTitleGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${palette.accent}" />
+          <stop offset="50%" stop-color="${palette.primary}" />
+          <stop offset="100%" stop-color="#FFFFFF" />
         </linearGradient>
 
-        <linearGradient
-          id="quotePanel"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
-          <stop
-            offset="0%"
-            stop-color="#FFFFFF"
-            stop-opacity="0.10"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="${palette.secondary}"
-            stop-opacity="0.16"
-          />
+        <linearGradient id="goldNameGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#FFFFFF" />
+          <stop offset="25%" stop-color="${palette.accent}" />
+          <stop offset="60%" stop-color="${palette.primary}" />
+          <stop offset="100%" stop-color="#FFD700" />
         </linearGradient>
 
-        <filter
-          id="textShadow"
-          x="-30%"
-          y="-30%"
-          width="160%"
-          height="160%"
-        >
-          <feDropShadow
-            dx="0"
-            dy="4"
-            stdDeviation="4"
-            flood-color="#000000"
-            flood-opacity="0.78"
-          />
+        <filter id="royal3DShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.95" />
         </filter>
 
-        <filter
-          id="nameShadow"
-          x="-30%"
-          y="-30%"
-          width="160%"
-          height="160%"
-        >
-          <feDropShadow
-            dx="0"
-            dy="4"
-            stdDeviation="4"
-            flood-color="#000000"
-            flood-opacity="0.90"
-          />
+        <filter id="textGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.85" />
         </filter>
-
-        <clipPath id="textSafeArea">
-          <rect
-            x="${textLayout.left}"
-            y="${textLayout.top}"
-            width="${textLayout.width}"
-            height="${
-              textLayout.bottom -
-              textLayout.top
-            }"
-            rx="30"
-          />
-        </clipPath>
 
         <style>
-          .college {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            font-size:
-              ${collegeFontSize}px;
-
-            font-weight: 700;
-            letter-spacing: 1.3px;
-            fill: ${palette.accent};
-            filter: url(#textShadow);
-          }
-
-          .birthday-heading {
-            font-family:
-              Georgia,
-              "Times New Roman",
-              serif;
-
-            font-size:
-              ${headingFontSize}px;
-
-            font-weight: 700;
-            letter-spacing: 2.5px;
-            fill: url(#titleGradient);
-            filter: url(#textShadow);
-          }
-
-          .student-name {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            font-size:
-              ${nameFontSize}px;
-
-            font-weight: 900;
-            letter-spacing: 0.5px;
-            fill: ${palette.text};
-            stroke: #000000;
-            stroke-width: 1.1px;
-            paint-order: stroke fill;
-            filter: url(#nameShadow);
-          }
-
-          .details {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            font-size:
-              ${detailFontSize}px;
-
-            font-weight: 700;
-            letter-spacing: 1.1px;
-            fill: ${palette.accent};
-            filter: url(#textShadow);
-          }
-
-          .quote {
-            font-family:
-              Georgia,
-              "Times New Roman",
-              serif;
-
-            font-size:
-              ${quoteFontSize}px;
-
-            font-weight: 400;
-            font-style: italic;
-            fill: ${palette.text};
-            filter: url(#textShadow);
-          }
-
-          .date {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            font-size:
-              ${dateFontSize}px;
-
-            font-weight: 800;
-            letter-spacing: 2px;
-            fill: ${palette.primary};
-            filter: url(#textShadow);
-          }
+          .royal-clg { font-family: Arial, Helvetica, sans-serif; font-size: ${collegeFit.fontSize}px; font-weight: 700; letter-spacing: 2.2px; fill: ${palette.accent}; }
+          .royal-title { font-family: Georgia, 'Times New Roman', serif; font-size: ${headingFit.fontSize}px; font-weight: 900; letter-spacing: 3.5px; fill: url(#goldTitleGrad); filter: url(#royal3DShadow); }
+          .royal-name { font-family: Arial, Helvetica, sans-serif; font-size: ${nameFit.fontSize}px; font-weight: 900; letter-spacing: 1.5px; fill: url(#goldNameGrad); stroke: #000000; stroke-width: 1.5px; paint-order: stroke fill; filter: url(#royal3DShadow); }
+          .royal-dept { font-family: Arial, Helvetica, sans-serif; font-size: ${deptFit.fontSize}px; font-weight: 700; letter-spacing: 1.6px; fill: ${palette.accent}; }
+          .royal-year { font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 1.6px; fill: #FFFFFF; }
+          .royal-quote { font-family: Georgia, 'Times New Roman', serif; font-size: ${quoteFontSize}px; font-weight: 400; font-style: italic; fill: #FFFFFF; filter: url(#textGlow); }
+          .royal-date { font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 800; letter-spacing: 2.4px; fill: ${palette.primary}; }
         </style>
       </defs>
 
-      <g clip-path="url(#textSafeArea)">
-        ${buildSvgTextLines({
-          lines: collegeLines,
-          x: textX,
-          y: collegeY,
-          lineHeight:
-            collegeFontSize * 1.25,
-          textAnchor,
-          className: "college",
-        })}
+      <g>
+        <!-- 1. TOP COLLEGE HEADER -->
+        <text x="${width / 2}" y="52" text-anchor="middle" class="royal-clg">✦ ${escapeXml(collegeFit.lines[0] || rawCollege)} ✦</text>
+        <line x1="${width / 2 - 240}" y1="66" x2="${width / 2 + 240}" y2="66" stroke="${palette.primary}" stroke-opacity="0.6" stroke-width="1.4" />
 
-        ${buildSvgTextLines({
-          lines: headingLines,
-          x: textX,
-          y: headingY,
-          lineHeight:
-            headingLineHeight,
-          textAnchor,
-          className:
-            "birthday-heading",
-        })}
+        <!-- 2. GRAND CELEBRATION HEADLINE -->
+        <text x="${width / 2}" y="128" text-anchor="middle" class="royal-title">★ ${escapeXml(headingFit.lines[0] || rawHeading)} ★</text>
 
-        ${buildSvgTextLines({
-          lines: nameLines,
-          x: textX,
-          y: nameY,
-          lineHeight:
-            nameLineHeight,
-          textAnchor,
-          className: "student-name",
-        })}
+        <!-- 3. STUDENT NAME -->
+        <text x="${width / 2}" y="${nameY}" text-anchor="middle" class="royal-name">${escapeXml(nameFit.lines[0] || rawName)}</text>
 
-        <line
-          x1="${textX}"
-          y1="${dividerY}"
-          x2="${
-            textX +
-            availableWidth * 0.68
-          }"
-          y2="${dividerY}"
-          stroke="${palette.primary}"
-          stroke-width="5"
-          stroke-linecap="round"
-        />
+        <!-- 4. ORNATE GOLDEN DIVIDER -->
+        <line x1="${width / 2 - 220}" y1="${dividerY}" x2="${width / 2 - 24}" y2="${dividerY}" stroke="${palette.primary}" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="${width / 2},${dividerY - 8} ${width / 2 + 8},${dividerY} ${width / 2},${dividerY + 8} ${width / 2 - 8},${dividerY}" fill="${palette.accent}" />
+        <line x1="${width / 2 + 24}" y1="${dividerY}" x2="${width / 2 + 220}" y2="${dividerY}" stroke="${palette.primary}" stroke-width="2.5" stroke-linecap="round" />
 
-        <line
-          x1="${
-            textX +
-            availableWidth * 0.71
-          }"
-          y1="${dividerY}"
-          x2="${
-            textX +
-            availableWidth * 0.82
-          }"
-          y2="${dividerY}"
-          stroke="${palette.accent}"
-          stroke-width="2"
-          stroke-linecap="round"
-        />
-
-        ${buildSvgTextLines({
-          lines: detailLines,
-          x: textX,
-          y: detailsY,
-          lineHeight:
-            detailLineHeight,
-          textAnchor,
-          className: "details",
-        })}
-
+        <!-- 5. ACADEMIC DETAILS -->
+        <text x="${width / 2}" y="${deptY}" text-anchor="middle" class="royal-dept">${escapeXml(deptFit.lines[0] || rawDept)}</text>
         ${
-          quoteLines.length > 0
-            ? `
-              <rect
-                x="${textX - 10}"
-                y="${quotePanelY}"
-                width="${
-                  availableWidth + 8
-                }"
-                height="${quotePanelHeight}"
-                rx="18"
-                fill="url(#quotePanel)"
-                stroke="${palette.accent}"
-                stroke-opacity="0.15"
-              />
-
-              <text
-                x="${textX + 10}"
-                y="${quoteY - 4}"
-                font-family="Georgia, serif"
-                font-size="${
-                  quoteFontSize * 1.75
-                }"
-                fill="${palette.primary}"
-                fill-opacity="0.82"
-              >“</text>
-
-              ${buildSvgTextLines({
-                lines: quoteLines,
-                x: textX + 30,
-                y: quoteY,
-                lineHeight:
-                  quoteFontSize * 1.45,
-                textAnchor,
-                className: "quote",
-              })}
-            `
+          yearRollText
+            ? `<text x="${width / 2}" y="${yearY}" text-anchor="middle" class="royal-year">${escapeXml(yearRollText)}</text>`
             : ""
         }
 
-        ${
-          studentInfo.date
-            ? `
-              <text
-                x="${textX + 30}"
-                y="${dateY}"
-                text-anchor="start"
-                class="date"
-              >${escapeXml(
-                studentInfo.date
-              )}</text>
-            `
-            : ""
-        }
+        <!-- 6. BIRTHDAY WISH QUOTE -->
+        ${buildSvgTextLines({
+          lines: quoteLines,
+          x: width / 2,
+          y: quoteStartY,
+          lineHeight: quoteLineHeight,
+          textAnchor: "middle",
+          className: "royal-quote",
+        })}
+
+        <!-- 7. DATE & FELICITATION FOOTER -->
+        <text x="${width / 2}" y="${dateY}" text-anchor="middle" class="royal-date">${escapeXml(rawDate ? `✦ ${rawDate} ✦` : "✦ WITH BEST COMPLIMENTS & CELEBRATIONS ✦")}</text>
       </g>
     </svg>
   `);
@@ -2170,58 +1814,7 @@ function createFooterOverlay({
       width="${width}"
       height="${height}"
       xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id="footerLine"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="0"
-        >
-          <stop
-            offset="0%"
-            stop-color="${palette.primary}"
-            stop-opacity="0"
-          />
-
-          <stop
-            offset="50%"
-            stop-color="${palette.primary}"
-            stop-opacity="0.85"
-          />
-
-          <stop
-            offset="100%"
-            stop-color="${palette.primary}"
-            stop-opacity="0"
-          />
-        </linearGradient>
-      </defs>
-
-      <line
-        x1="${width * 0.1}"
-        y1="${height * 0.95}"
-        x2="${width * 0.9}"
-        y2="${height * 0.95}"
-        stroke="url(#footerLine)"
-        stroke-width="2"
-      />
-
-      <text
-        x="${width / 2}"
-        y="${height * 0.974}"
-        text-anchor="middle"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="${Math.round(
-          width * 0.014
-        )}"
-        font-weight="700"
-        letter-spacing="3"
-        fill="#FFFFFF"
-        fill-opacity="0.68"
-      >CELEBRATE • INSPIRE • SHINE</text>
-    </svg>
+    ></svg>
   `);
 }
 
@@ -2497,6 +2090,7 @@ async function composeBirthdayPoster({
   const posterLayout =
     resolvePosterLayout({
       layout,
+      style,
       width: safeWidth,
       height: safeHeight,
       variationIndex:

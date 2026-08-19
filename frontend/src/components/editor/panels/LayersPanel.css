@@ -1,0 +1,118 @@
+.layers-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
+}
+
+.layers-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.layers-panel__icon {
+  color: #7c3cff;
+}
+
+.layers-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+}
+
+.layers-panel__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.layers-panel__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.layers-panel__item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.layers-panel__item.active {
+  background: #f5f3ff;
+  border-color: #7c3cff;
+  box-shadow: 0 0 0 1px #7c3cff;
+}
+
+.layers-panel__item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.layers-panel__type-icon {
+  color: #7c3cff;
+  flex-shrink: 0;
+}
+
+.layers-panel__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layers-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.layers-panel__actions button {
+  border: none;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.15s;
+}
+
+.layers-panel__actions button:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.layers-panel__actions button.locked {
+  color: #f59e0b;
+}
+
+.layers-panel__actions button.delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}

@@ -1,365 +1,175 @@
-import {
-  Heading1,
-  Heading2,
-  Pilcrow,
-  Plus,
-  Search,
-  Type,
-} from "lucide-react";
-
-import {
-  useMemo,
-  useState,
-} from "react";
-
+import React, { useState } from "react";
+import { Heading1, Heading2, Pilcrow, Plus, Search, Sparkles, Type, Star } from "lucide-react";
 import "./TextPanel.css";
 
-const textPresets = [
+const FONT_COMBINATIONS = [
   {
-    id: "heading",
-    title: "Add Heading",
-    description:
-      "Large bold title",
-    icon: Heading1,
-    action: "heading",
+    id: "royal-gold",
+    title: "Royal Gold 3D",
+    sample: "VIP CELEBRATION",
+    style: {
+      fontFamily: "Arial",
+      fontSize: 58,
+      fontWeight: "900",
+      fill: "#D4AF37",
+      charSpacing: 100,
+      shadow: "rgba(0,0,0,0.9) 2px 4px 12px",
+    },
   },
   {
-    id: "subheading",
-    title: "Add Sub Heading",
-    description:
-      "Medium sized subtitle",
-    icon: Heading2,
-    action: "subheading",
+    id: "cyber-neon",
+    title: "Cyber Neon Glow",
+    sample: "HAPPY BIRTHDAY",
+    style: {
+      fontFamily: "Impact",
+      fontSize: 60,
+      fontWeight: "900",
+      fill: "#00F2FE",
+      charSpacing: 80,
+      shadow: "#00F2FE 0px 0px 18px",
+    },
   },
   {
-    id: "body",
-    title: "Add Body Text",
-    description:
-      "Paragraph or message",
-    icon: Pilcrow,
-    action: "body",
+    id: "varsity-champion",
+    title: "Varsity Champion",
+    sample: "GOLD MEDALIST",
+    style: {
+      fontFamily: "Georgia",
+      fontSize: 52,
+      fontWeight: "bold",
+      fill: "#FFDF73",
+      charSpacing: 60,
+      stroke: "#000000",
+      strokeWidth: 1.5,
+    },
+  },
+  {
+    id: "luxury-vogue",
+    title: "Luxury Vogue Serif",
+    sample: "DISTINCTION & HONORS",
+    style: {
+      fontFamily: "Playfair Display",
+      fontSize: 48,
+      fontWeight: "bold",
+      fill: "#FFFFFF",
+      charSpacing: 120,
+    },
+  },
+  {
+    id: "cursive-script",
+    title: "Golden Cursive Script",
+    sample: "Best Wishes & Love",
+    style: {
+      fontFamily: "Pacifico",
+      fontSize: 46,
+      fill: "#FFD700",
+    },
+  },
+  {
+    id: "blockbuster-impact",
+    title: "Blockbuster 3D",
+    sample: "MASS HERO 2026",
+    style: {
+      fontFamily: "Impact",
+      fontSize: 56,
+      fill: "#FF3864",
+      charSpacing: 40,
+    },
   },
 ];
 
-function TextPanel({
-  addHeading,
-  addSubHeading,
-  addBody,
-}) {
-  const [
-    search,
-    setSearch,
-  ] = useState("");
+function TextPanel({ addHeading, addSubHeading, addBody, onAddCustomStyle }) {
+  const [search, setSearch] = useState("");
 
-  const [
-    customText,
-    setCustomText,
-  ] = useState("");
+  const filteredCombos = FONT_COMBINATIONS.filter((item) =>
+    item.title.toLowerCase().includes(search.toLowerCase()) ||
+    item.sample.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const [
-    textType,
-    setTextType,
-  ] = useState("heading");
-
-  const filteredPresets =
-    useMemo(() => {
-      const keyword =
-        search
-          .trim()
-          .toLowerCase();
-
-      if (!keyword) {
-        return textPresets;
-      }
-
-      return textPresets.filter(
-        (item) =>
-          item.title
-            .toLowerCase()
-            .includes(keyword) ||
-          item.description
-            .toLowerCase()
-            .includes(keyword)
-      );
-    }, [search]);
-
-  const addPresetText = (
-    action
-  ) => {
-    if (
-      action === "heading"
-    ) {
-      addHeading?.();
-      return;
-    }
-
-    if (
-      action === "subheading"
-    ) {
-      addSubHeading?.();
-      return;
-    }
-
-    if (action === "body") {
-      addBody?.();
+  const handleAddStyle = (preset) => {
+    if (typeof onAddCustomStyle === "function") {
+      onAddCustomStyle(preset);
+    } else if (addHeading) {
+      addHeading({
+        text: preset.sample,
+        fontFamily: preset.style.fontFamily,
+        fontSize: preset.style.fontSize,
+        fill: preset.style.fill,
+        fontWeight: preset.style.fontWeight,
+      });
     }
   };
-
-  const addCustomText = () => {
-    const value =
-      customText.trim();
-
-    if (!value) {
-      return;
-    }
-
-    const options = {
-      text: value,
-    };
-
-    if (
-      textType === "heading"
-    ) {
-      addHeading?.(options);
-    } else if (
-      textType === "subheading"
-    ) {
-      addSubHeading?.(
-        options
-      );
-    } else {
-      addBody?.(options);
-    }
-
-    setCustomText("");
-  };
-
-  const handleCustomTextKeyDown =
-    (event) => {
-      if (
-        event.key === "Enter" &&
-        (event.ctrlKey ||
-          event.metaKey)
-      ) {
-        event.preventDefault();
-        addCustomText();
-      }
-    };
 
   return (
     <div className="text-panel">
-      <div className="text-panel__header">
-        <div className="text-panel__icon">
-          <Type size={20} />
-        </div>
+      {/* Primary Add a Text Box Button */}
+      <button
+        type="button"
+        className="text-panel__primary-btn"
+        onClick={() => addHeading?.()}
+      >
+        <Plus size={18} />
+        <span>Add a text box</span>
+      </button>
 
-        <div>
-          <span>TEXT</span>
-
-          <h2>Add Text</h2>
-
-          <p>
-            Add editable headings,
-            subtitles and messages to
-            your poster.
-          </p>
-        </div>
-      </div>
-
-      <div className="text-panel__composer">
-        <div className="text-panel__composer-heading">
-          <div>
-            <span>
-              CUSTOM TEXT
-            </span>
-
-            <strong>
-              Type your poster text
-            </strong>
-          </div>
-
-          <Type size={18} />
-        </div>
-
-        <textarea
-          rows="4"
-          value={customText}
-          placeholder="Example: Happy Birthday Siva!"
-          onChange={(event) =>
-            setCustomText(
-              event.target.value
-            )
-          }
-          onKeyDown={
-            handleCustomTextKeyDown
-          }
-        />
-
-        <div className="text-panel__type-options">
-          <button
-            type="button"
-            className={
-              textType ===
-              "heading"
-                ? "text-panel__type-option text-panel__type-option--active"
-                : "text-panel__type-option"
-            }
-            onClick={() =>
-              setTextType(
-                "heading"
-              )
-            }
-          >
-            Heading
-          </button>
-
-          <button
-            type="button"
-            className={
-              textType ===
-              "subheading"
-                ? "text-panel__type-option text-panel__type-option--active"
-                : "text-panel__type-option"
-            }
-            onClick={() =>
-              setTextType(
-                "subheading"
-              )
-            }
-          >
-            Subtitle
-          </button>
-
-          <button
-            type="button"
-            className={
-              textType === "body"
-                ? "text-panel__type-option text-panel__type-option--active"
-                : "text-panel__type-option"
-            }
-            onClick={() =>
-              setTextType("body")
-            }
-          >
-            Body
-          </button>
-        </div>
+      {/* Default Typography Hierarchy */}
+      <div className="text-panel__presets">
+        <button
+          type="button"
+          className="text-panel__preset-card text-panel__preset-card--heading"
+          onClick={() => addHeading?.()}
+        >
+          <span className="text-panel__heading-demo">Add a heading</span>
+          <small>64px Bold</small>
+        </button>
 
         <button
           type="button"
-          className="text-panel__add-button"
-          disabled={
-            !customText.trim()
-          }
-          onClick={
-            addCustomText
-          }
+          className="text-panel__preset-card text-panel__preset-card--subheading"
+          onClick={() => addSubHeading?.()}
         >
-          <Plus size={17} />
-
-          Add to poster
+          <span className="text-panel__subheading-demo">Add a subheading</span>
+          <small>36px Medium</small>
         </button>
 
-        <small className="text-panel__composer-tip">
-          Press Ctrl + Enter to add
-          the text quickly.
-        </small>
+        <button
+          type="button"
+          className="text-panel__preset-card text-panel__preset-card--body"
+          onClick={() => addBody?.()}
+        >
+          <span className="text-panel__body-demo">Add a little bit of body text</span>
+          <small>22px Regular</small>
+        </button>
       </div>
 
-      <div className="text-panel__section-title">
-        <span>
-          QUICK TEXT
-        </span>
-
-        <strong>
-          Add a text style
-        </strong>
+      {/* Font Combinations Header */}
+      <div className="text-panel__combos-header">
+        <Sparkles size={16} className="sparkle-icon" />
+        <span>Font combinations & Styles</span>
       </div>
 
-      <div className="text-panel__search">
-        <Search size={17} />
-
-        <input
-          type="text"
-          placeholder="Search text styles..."
-          value={search}
-          onChange={(event) =>
-            setSearch(
-              event.target.value
-            )
-          }
-        />
-      </div>
-
-      <div className="text-panel__list">
-        {filteredPresets.map(
-          (item) => {
-            const Icon =
-              item.icon;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className="text-panel__card"
-                onClick={() =>
-                  addPresetText(
-                    item.action
-                  )
-                }
-              >
-                <div className="text-panel__card-icon">
-                  <Icon
-                    size={26}
-                  />
-                </div>
-
-                <div className="text-panel__card-content">
-                  <strong>
-                    {item.title}
-                  </strong>
-
-                  <small>
-                    {
-                      item.description
-                    }
-                  </small>
-                </div>
-
-                <Plus
-                  className="text-panel__card-plus"
-                  size={18}
-                />
-              </button>
-            );
-          }
-        )}
-      </div>
-
-      {filteredPresets.length ===
-        0 && (
-        <div className="text-panel__empty">
-          <Search size={24} />
-
-          <strong>
-            No text style found
-          </strong>
-
-          <p>
-            Try another search term.
-          </p>
-        </div>
-      )}
-
-      <div className="text-panel__footer">
-        <strong>Tip</strong>
-
-        <p>
-          Type your message above and
-          select Add to poster. You
-          can also double-click text
-          on the canvas to edit it.
-        </p>
+      {/* Font Combinations Grid */}
+      <div className="text-panel__combos-list">
+        {filteredCombos.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="text-panel__combo-card"
+            onClick={() => handleAddStyle(item)}
+            title={`Add ${item.title}`}
+          >
+            <span
+              className="text-panel__combo-preview"
+              style={{
+                fontFamily: item.style.fontFamily,
+                color: item.style.fill,
+              }}
+            >
+              {item.sample}
+            </span>
+            <small>{item.title}</small>
+          </button>
+        ))}
       </div>
     </div>
   );

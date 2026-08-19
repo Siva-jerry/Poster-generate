@@ -5,6 +5,10 @@ const {
   generateSimilarTemplates,
 } = require("../services/templateEngine");
 
+const {
+  createTemplatePreviewSvg,
+} = require("../utils/previewUtils");
+
 const supabase = require(
   "../config/supabase"
 );
@@ -34,33 +38,32 @@ async function listTemplates(
     let previewMap = new Map();
 
     if (templateIds.length) {
-      const {
-        data: previews,
-        error,
-      } = await supabase
-        .from("template_previews")
-        .select(
-          "template_id, preview_url"
-        )
-        .in(
-          "template_id",
-          templateIds
-        );
-
-      if (error) {
-        console.error(
-          "Unable to fetch template previews:",
-          error.message
-        );
-      } else {
-        previewMap = new Map(
-          (previews || []).map(
-            (preview) => [
-              preview.template_id,
-              preview.preview_url,
-            ]
+      try {
+        const {
+          data: previews,
+          error,
+        } = await supabase
+          .from("template_previews")
+          .select(
+            "template_id, preview_url"
           )
-        );
+          .in(
+            "template_id",
+            templateIds
+          );
+
+        if (!error && previews) {
+          previewMap = new Map(
+            previews.map(
+              (preview) => [
+                preview.template_id,
+                preview.preview_url,
+              ]
+            )
+          );
+        }
+      } catch (e) {
+        // Supabase offline/not configured -> fallback to dynamic vector SVG preview
       }
     }
 
@@ -75,7 +78,7 @@ async function listTemplates(
             url:
               previewMap.get(
                 template.id
-              ) || null,
+              ) || `/api/templates/${encodeURIComponent(template.id)}/preview.svg`,
           },
         })
       );
@@ -109,10 +112,45 @@ function showTemplate(req, res, next) {
       });
     }
 
+    template.preview = {
+      ...template.preview,
+      url:
+        template.preview?.url ||
+        `/api/templates/${encodeURIComponent(template.id)}/preview.svg`,
+    };
+
     return res.status(200).json({
       success: true,
       template,
     });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+function getTemplateSvgPreview(req, res, next) {
+  try {
+    const template = getTemplateById(
+      req.params.templateId
+    );
+
+    if (!template) {
+      return res.status(404).send("Template not found.");
+    }
+
+    const svgBuffer = createTemplatePreviewSvg({
+      template,
+      width: 540,
+      height: 675,
+    });
+
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+
+    return res.status(200).send(svgBuffer);
   } catch (error) {
     return next(error);
   }
@@ -145,10 +183,20 @@ function listSimilarTemplates(req, res, next) {
       });
     }
 
+    const enriched = templates.map((template) => ({
+      ...template,
+      preview: {
+        ...template.preview,
+        url:
+          template.preview?.url ||
+          `/api/templates/${encodeURIComponent(template.id)}/preview.svg`,
+      },
+    }));
+
     return res.status(200).json({
       success: true,
-      templates,
-      total: templates.length,
+      templates: enriched,
+      total: enriched.length,
     });
   } catch (error) {
     return next(error);
@@ -158,6 +206,7 @@ function listSimilarTemplates(req, res, next) {
 module.exports = {
   listTemplates,
   showTemplate,
+  getTemplateSvgPreview,
   listTemplateFilters,
   listSimilarTemplates,
 };

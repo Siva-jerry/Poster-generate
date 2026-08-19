@@ -149,7 +149,7 @@ function Hero() {
 
             <div className="hero-poster__name">
               <span>Celebrate</span>
-              <strong>SIVA M</strong>
+              <strong>PETER PARKER</strong>
               <small>
                 Wishing you happiness and success
               </small>

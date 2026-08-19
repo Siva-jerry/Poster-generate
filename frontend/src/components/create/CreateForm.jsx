@@ -1,1187 +1,745 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
-  generatePoster,
-  getPosterStatus,
-} from "../../services/posterService";
-
+  Sparkles,
+  Upload,
+  Crown,
+  Zap,
+  Camera,
+  Trophy,
+  Palette,
+  Flower2,
+  Clapperboard,
+  Landmark,
+  Flame,
+  CheckCircle2,
+  RefreshCw,
+  Wand2,
+  User,
+  GraduationCap,
+  Building2,
+  Calendar,
+  Layers,
+  Shuffle,
+  Eye,
+  SlidersHorizontal,
+  Check,
+  Award,
+  Scissors,
+  Image as ImageIcon,
+} from "lucide-react";
+import { generatePoster } from "../../services/posterService";
 import "./CreateForm.css";
 
-/*
-|--------------------------------------------------------------------------
-| Initial form values
-|--------------------------------------------------------------------------
-*/
+const PRESET_STYLES = [
+  {
+    value: "mix",
+    label: "🎲 Mix & Match Archetypes",
+    icon: Shuffle,
+    tag: "4 Unique Layouts",
+    gradient: "linear-gradient(135deg, #0f0c1b, #3b1d60, #d4af37, #00f0ff)",
+    description: "Generates 4 completely distinct layouts: Royal Center Stage, Hero Split, Polaroid, and Varsity Laurel.",
+  },
+  {
+    value: "luxury",
+    label: "👑 Royal VIP Stage",
+    icon: Crown,
+    tag: "Center Stage",
+    gradient: "linear-gradient(135deg, #111111, #3A2405, #D4AF37)",
+    description: "Grand center stage spotlights, 3D metallic balloons, royal crown and extruded gold typography.",
+  },
+  {
+    value: "modern",
+    label: "⚡ Mass Hero Movie Flex",
+    icon: Zap,
+    tag: "Dynamic Split",
+    gradient: "linear-gradient(135deg, #090217, #24084F, #00F0FF)",
+    description: "Asymmetric left-aligned varsity title, dynamic right photo cutout, laser speedlines and stadium lights.",
+  },
+  {
+    value: "floral",
+    label: "📸 Aesthetic Polaroid",
+    icon: Camera,
+    tag: "Instagram Trend",
+    gradient: "linear-gradient(135deg, #1A0713, #45152F, #FF7597)",
+    description: "Tilted polaroid cutout frame with washi tape, cursive script lettering, and delicate champagne sparkles.",
+  },
+  {
+    value: "sports",
+    label: "🏆 Varsity Champion",
+    icon: Trophy,
+    tag: "Athletic Laurel",
+    gradient: "linear-gradient(135deg, #040F2D, #0B256B, #38EF7D)",
+    description: "Top varsity header banner, diamond achievement shield, laurel wreath and carbon-fibre badge.",
+  },
+  {
+    value: "neon",
+    label: "🔮 Cyberpunk Neon",
+    icon: Palette,
+    tag: "DJ Night",
+    gradient: "linear-gradient(135deg, #0D0221, #4A0E4E, #FF3864)",
+    description: "Glowing neon rings, cyan & magenta laser reflections, cyber grid floor and futuristic badges.",
+  },
+  {
+    value: "cinematic",
+    label: "🎬 Hollywood Blockbuster",
+    icon: Clapperboard,
+    tag: "Action Hero",
+    gradient: "linear-gradient(135deg, #180808, #451010, #F97316)",
+    description: "Deep charcoal embers, anamorphic gold lens flares, explosive particles and theatrical billing credits.",
+  },
+  {
+    value: "minimal",
+    label: "🏛️ Minimalist Swiss",
+    icon: Landmark,
+    tag: "High Fashion",
+    gradient: "linear-gradient(135deg, #18181B, #27272A, #E4E4E7)",
+    description: "Vogue-inspired clean editorial grid, architectural border rules, and crisp high-contrast typography.",
+  },
+  {
+    value: "traditional",
+    label: "🪔 Traditional Palace",
+    icon: Flame,
+    tag: "Heritage Grandeur",
+    gradient: "linear-gradient(135deg, #240A04, #5A1E06, #F59E0B)",
+    description: "Saffron & marigold garlands, heritage palace arch filigree, and warm brass diya festive glow.",
+  },
+];
+
+const COLOR_PALETTES = [
+  { id: "gold", name: "Royal Gold", primary: "#D4AF37", secondary: "#111111", accent: "#FFF7D6" },
+  { id: "cyber", name: "Cyber Neon", primary: "#00F0FF", secondary: "#FF007F", accent: "#CFFAFE" },
+  { id: "sapphire", name: "Imperial Blue", primary: "#F59E0B", secondary: "#1E40AF", accent: "#DBEAFE" },
+  { id: "crimson", name: "Red Ember", primary: "#EF4444", secondary: "#18181B", accent: "#FCA5A5" },
+  { id: "rose", name: "Rose Gold", primary: "#FB7185", secondary: "#4C0519", accent: "#FFE4E6" },
+  { id: "emerald", name: "Emerald Prestige", primary: "#10B981", secondary: "#064E3B", accent: "#D1FAE5" },
+  { id: "sunset", name: "Sunset Tangerine", primary: "#F97316", secondary: "#6B21A8", accent: "#FED7AA" },
+  { id: "monochrome", name: "Platinum Slate", primary: "#E4E4E7", secondary: "#18181B", accent: "#FAFAFA" },
+];
+
+const PRESET_STUDENTS = [
+  {
+    label: "🎓 Student Birthday (Peter Parker)",
+    data: {
+      name: "PETER PARKER",
+      department: "Dept. of Computer Science & Engineering",
+      year: "Final Year",
+      rollNo: "21CS108",
+      collegeName: "COLLEGE OF ENGINEERING & TECHNOLOGY",
+      birthdayQuote: "Wishing you a spectacular birthday filled with happiness, triumph and great memories!",
+      birthdayHeading: "HAPPY BIRTHDAY",
+    },
+  },
+  {
+    label: "🏆 Department Topper / Star",
+    data: {
+      name: "SARAH CONNOR",
+      department: "Dept. of Artificial Intelligence & Data Science",
+      year: "3rd Year",
+      rollNo: "22AI045",
+      collegeName: "INSTITUTE OF TECHNOLOGY & SCIENCE",
+      birthdayQuote: "Wishing our academic star continuous success, innovation and brilliant achievements!",
+      birthdayHeading: "HAPPY BIRTHDAY CHAMPION",
+    },
+  },
+  {
+    label: "⚽ Sports Captain",
+    data: {
+      name: "ALEX RIDER",
+      department: "Dept. of Mechanical Engineering",
+      year: "Final Year",
+      rollNo: "21ME072",
+      collegeName: "NATIONAL COLLEGE OF TECHNOLOGY",
+      birthdayQuote: "Keep scoring goals and leading from the front. Wishing our captain a rocking birthday!",
+      birthdayHeading: "HAPPY BIRTHDAY CAPTAIN",
+    },
+  },
+  {
+    label: "🎨 Cultural Secretary / Artist",
+    data: {
+      name: "MAYA LIN",
+      department: "School of Architecture & Design",
+      year: "2nd Year",
+      rollNo: "23AR019",
+      collegeName: "ACADEMY OF FINE ARTS & DESIGN",
+      birthdayQuote: "May your journey be as vibrant and inspiring as your creative art. Have a fabulous birthday!",
+      birthdayHeading: "HAPPY BIRTHDAY STAR",
+    },
+  },
+  {
+    label: "🏛️ Faculty Special / Mentor",
+    data: {
+      name: "DR. ALAN GRANT",
+      department: "Department of Aerospace Engineering",
+      year: "Professor & Head",
+      rollNo: "FAC-882",
+      collegeName: "GLOBAL INSTITUTE OF TECHNOLOGY",
+      birthdayQuote: "Thank you for inspiring minds and guiding future leaders. Wishing you health and prosperity!",
+      birthdayHeading: "HAPPY BIRTHDAY SIR",
+    },
+  },
+];
+
+const PROMPT_SUGGESTIONS = [
+  "3D metallic gold balloons & stage spotlights",
+  "Dramatic red smoke explosion & stadium lighting",
+  "Golden laurel wreath with academic achievement stars",
+  "Polaroid cutout with pastel botanical leaves & bokeh",
+  "Cyberpunk neon laser rays with glowing cyan outlines",
+  "Anamorphic gold lens flares with floating embers",
+];
 
 const INITIAL_FORM = {
-  name: "",
-  department: "",
-  year: "",
-  rollNo: "",
-  collegeName: "",
-  birthdayQuote: "",
+  name: "PETER PARKER",
+  department: "Dept. of Computer Science & Engineering",
+  year: "Final Year",
+  rollNo: "21CS108",
+  collegeName: "COLLEGE OF ENGINEERING & TECHNOLOGY",
+  birthdayQuote: "Wishing you a spectacular birthday filled with happiness, triumph and great memories!",
   birthdayHeading: "HAPPY BIRTHDAY",
   designation: "",
   date: "",
-  prompt: "",
-  style: "luxury",
+  prompt: "Royal VIP celebration poster with 3D metallic balloons, stage spotlights, and extruded gold typography",
+  style: "mix",
   theme: "",
-  colors: "",
+  colors: "Royal Gold",
   variationCount: 4,
   removeBackground: true,
 };
 
-/*
-|--------------------------------------------------------------------------
-| Style options
-|--------------------------------------------------------------------------
-*/
+function CreateForm({ onGenerateStart, onGenerateSuccess, onGenerateError }) {
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [logo, setLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
+  const [selectedColor, setSelectedColor] = useState(COLOR_PALETTES[0]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
 
-const STYLE_OPTIONS = [
-  {
-    value: "luxury",
-    label: "Luxury",
-    description:
-      "Premium gold, elegant lighting and rich decoration.",
-  },
-  {
-    value: "modern",
-    label: "Modern",
-    description:
-      "Clean typography, gradients and contemporary composition.",
-  },
-  {
-    value: "floral",
-    label: "Floral",
-    description:
-      "Beautiful flowers, soft colors and graceful decoration.",
-  },
-  {
-    value: "neon",
-    label: "Neon",
-    description:
-      "Glowing lights, vivid colors and futuristic effects.",
-  },
-  {
-    value: "sports",
-    label: "Sports",
-    description:
-      "Powerful movement, speed effects and energetic composition.",
-  },
-  {
-    value: "minimal",
-    label: "Minimal",
-    description:
-      "Simple, clean and sophisticated birthday design.",
-  },
-];
-
-/*
-|--------------------------------------------------------------------------
-| Component
-|--------------------------------------------------------------------------
-*/
-
-function CreateForm({
-  onGenerateStart,
-  onGenerateSuccess,
-  onGenerateError,
-  onGenerated,
-}) {
-  const [form, setForm] =
-    useState(INITIAL_FORM);
-
-  const [photo, setPhoto] =
-    useState(null);
-
-  const [logo, setLogo] =
-    useState(null);
-
-  const [photoPreview, setPhotoPreview] =
-    useState("");
-
-  const [logoPreview, setLogoPreview] =
-    useState("");
-
-  const [isGenerating, setIsGenerating] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [serviceStatus, setServiceStatus] =
-    useState({
-      checking: true,
-      ready: false,
-      message:
-        "Checking AI poster service...",
-    });
-
-  /*
-  |--------------------------------------------------------------------------
-  | Selected style information
-  |--------------------------------------------------------------------------
-  */
+  const fileInputRef = useRef(null);
+  const logoInputRef = useRef(null);
 
   const selectedStyle = useMemo(
-    () =>
-      STYLE_OPTIONS.find(
-        (item) =>
-          item.value === form.style
-      ) || STYLE_OPTIONS[0],
+    () => PRESET_STYLES.find((item) => item.value === form.style) || PRESET_STYLES[0],
     [form.style]
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Check backend poster service
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    let active = true;
-
-    async function checkService() {
-      try {
-        const result =
-          await getPosterStatus();
-
-        if (!active) {
-          return;
-        }
-
-        setServiceStatus({
-          checking: false,
-          ready: Boolean(result.ready),
-          message: result.ready
-            ? "AI poster service is ready."
-            : "AI service configuration is incomplete.",
-        });
-      } catch (statusError) {
-        if (!active) {
-          return;
-        }
-
-        setServiceStatus({
-          checking: false,
-          ready: false,
-          message:
-            statusError.message ||
-            "Unable to connect to the backend.",
-        });
-      }
-    }
-
-    checkService();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Revoke preview URLs
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    return () => {
-      if (photoPreview) {
-        URL.revokeObjectURL(
-          photoPreview
-        );
-      }
-
-      if (logoPreview) {
-        URL.revokeObjectURL(
-          logoPreview
-        );
-      }
-    };
-  }, [photoPreview, logoPreview]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Input handlers
-  |--------------------------------------------------------------------------
-  */
-
-  function handleChange(event) {
-    const {
-      name,
-      value,
-      type,
-      checked,
-    } = event.target;
-
-    setForm((currentForm) => ({
-      ...currentForm,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : value,
+  const handleApplyPreset = (preset) => {
+    setForm((prev) => ({
+      ...prev,
+      ...preset.data,
     }));
+  };
 
-    if (error) {
-      setError("");
-    }
-  }
+  const handleSelectColor = (pal) => {
+    setSelectedColor(pal);
+    setForm((prev) => ({
+      ...prev,
+      colors: pal.name,
+    }));
+  };
 
-  function validateImage(
-    file,
-    maximumSizeMb
-  ) {
-    if (!file) {
-      return "";
-    }
+  const handleAddPromptSuggestion = (suggestion) => {
+    setForm((prev) => ({
+      ...prev,
+      prompt: prev.prompt ? `${prev.prompt}, ${suggestion}` : suggestion,
+    }));
+  };
 
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "image/avif",
-    ];
+  const handlePhotoSelect = (file) => {
+    if (!file) return;
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
 
-    if (
-      !allowedTypes.includes(file.type)
-    ) {
-      return "Use a JPG, PNG, WEBP, GIF or AVIF image.";
-    }
+  const handleLogoSelect = (file) => {
+    if (!file) return;
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogo(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
 
-    const maximumBytes =
-      maximumSizeMb *
-      1024 *
-      1024;
-
-    if (
-      file.size > maximumBytes
-    ) {
-      return `Image must not exceed ${maximumSizeMb} MB.`;
-    }
-
-    return "";
-  }
-
-  function handlePhotoChange(event) {
-    const selectedFile =
-      event.target.files?.[0];
-
-    if (!selectedFile) {
-      return;
-    }
-
-    const validationError =
-      validateImage(
-        selectedFile,
-        10
-      );
-
-    if (validationError) {
-      setError(validationError);
-      event.target.value = "";
-      return;
-    }
-
-    if (photoPreview) {
-      URL.revokeObjectURL(
-        photoPreview
-      );
-    }
-
-    setPhoto(selectedFile);
-
-    setPhotoPreview(
-      URL.createObjectURL(
-        selectedFile
-      )
-    );
-
-    setError("");
-  }
-
-  function handleLogoChange(event) {
-    const selectedFile =
-      event.target.files?.[0];
-
-    if (!selectedFile) {
-      return;
-    }
-
-    const validationError =
-      validateImage(
-        selectedFile,
-        5
-      );
-
-    if (validationError) {
-      setError(validationError);
-      event.target.value = "";
-      return;
-    }
-
-    if (logoPreview) {
-      URL.revokeObjectURL(
-        logoPreview
-      );
-    }
-
-    setLogo(selectedFile);
-
-    setLogoPreview(
-      URL.createObjectURL(
-        selectedFile
-      )
-    );
-
-    setError("");
-  }
-
-  function removePhoto() {
-    if (photoPreview) {
-      URL.revokeObjectURL(
-        photoPreview
-      );
-    }
-
-    setPhoto(null);
-    setPhotoPreview("");
-  }
-
-  function removeLogo() {
-    if (logoPreview) {
-      URL.revokeObjectURL(
-        logoPreview
-      );
-    }
-
-    setLogo(null);
-    setLogoPreview("");
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Form validation
-  |--------------------------------------------------------------------------
-  */
-
-  function validateForm() {
-    if (!photo) {
-      return "Please upload the student's photo.";
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!form.name.trim()) {
-      return "Please enter the student's name.";
-    }
-
-    if (!form.prompt.trim()) {
-      return "Please describe the birthday poster design.";
-    }
-
-    const count = Number(
-      form.variationCount
-    );
-
-    if (
-      !Number.isInteger(count) ||
-      count < 1 ||
-      count > 8
-    ) {
-      return "Variation count must be between 1 and 8.";
-    }
-
-    return "";
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Generate posters
-  |--------------------------------------------------------------------------
-  */
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (isGenerating) {
+      setError("Please enter the student name.");
       return;
     }
 
-    const validationError =
-      validateForm();
-
-    if (validationError) {
-      setError(validationError);
-
-      onGenerateError?.(
-        validationError
-      );
-
-      return;
-    }
-
-    setError("");
     setIsGenerating(true);
-
+    setError("");
     onGenerateStart?.();
 
     try {
-      const result =
-        await generatePoster({
-          photo,
-          logo,
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val);
+        }
+      });
 
-          name:
-            form.name.trim(),
+      if (photo) {
+        formData.append("photo", photo);
+      }
+      if (logo) {
+        formData.append("logo", logo);
+      }
 
-          department:
-            form.department.trim(),
-
-          year:
-            form.year.trim(),
-
-          rollNo:
-            form.rollNo.trim(),
-
-          collegeName:
-            form.collegeName.trim(),
-
-          birthdayQuote:
-            form.birthdayQuote.trim(),
-
-          birthdayHeading:
-            form.birthdayHeading.trim() ||
-            "HAPPY BIRTHDAY",
-
-          designation:
-            form.designation.trim(),
-
-          date:
-            form.date,
-
-          prompt:
-            form.prompt.trim(),
-
-          style:
-            form.style,
-
-          theme:
-            form.theme.trim(),
-
-          colors:
-            form.colors.trim(),
-
-          variationCount:
-            Number(
-              form.variationCount
-            ),
-
-          removeBackground:
-            form.removeBackground,
-        });
-
-      onGenerateSuccess?.(result);
-      onGenerated?.(result);
-    } catch (generateError) {
-      const message =
-        generateError.message ||
-        "Unable to generate posters.";
-
-      setError(message);
-
-      onGenerateError?.(
-        message,
-        generateError
-      );
-    } finally {
+      const result = await generatePoster(formData);
       setIsGenerating(false);
+      onGenerateSuccess?.(result);
+    } catch (err) {
+      setIsGenerating(false);
+      const msg = err.response?.data?.message || err.message || "Failed to generate poster variations.";
+      setError(msg);
+      onGenerateError?.(msg);
     }
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Reset form
-  |--------------------------------------------------------------------------
-  */
-
-  function handleReset() {
-    if (isGenerating) {
-      return;
-    }
-
-    if (photoPreview) {
-      URL.revokeObjectURL(
-        photoPreview
-      );
-    }
-
-    if (logoPreview) {
-      URL.revokeObjectURL(
-        logoPreview
-      );
-    }
-
-    setForm(INITIAL_FORM);
-    setPhoto(null);
-    setLogo(null);
-    setPhotoPreview("");
-    setLogoPreview("");
-    setError("");
-  }
+  };
 
   return (
-    <form
-      className="create-form"
-      onSubmit={handleSubmit}
-      noValidate
-    >
-      <div className="create-form__header">
-        <div>
-          <span className="create-form__eyebrow">
-            SmartWish AI
-          </span>
-
-          <h1>
-            Create a Birthday Poster
-          </h1>
-
-          <p>
-            Upload the student photo,
-            enter the birthday details
-            and describe your preferred
-            poster design.
-          </p>
+    <form className="modern-create-form" onSubmit={handleSubmit}>
+      {/* 1. Quick Profile Presets */}
+      <div className="modern-create-form__presets-bar">
+        <div className="modern-create-form__presets-label">
+          <Sparkles size={15} className="sparkle-icon" />
+          <span>Quick Autofill Profiles:</span>
         </div>
-
-        <div
-          className={`create-form__status ${
-            serviceStatus.ready
-              ? "is-ready"
-              : "is-offline"
-          }`}
-        >
-          <span className="create-form__status-dot" />
-
-          <span>
-            {serviceStatus.message}
-          </span>
+        <div className="modern-create-form__presets-list">
+          {PRESET_STUDENTS.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              className="modern-create-form__preset-chip"
+              onClick={() => handleApplyPreset(preset)}
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {error && (
-        <div
-          className="create-form__error"
-          role="alert"
-        >
-          <span>⚠</span>
+      {/* 2. Visual Style Archetype Selector */}
+      <div className="modern-create-form__section">
+        <div className="modern-create-form__section-header">
+          <div className="section-number">1</div>
+          <div>
+            <h3>Choose Visual Design Archetype</h3>
+            <p>Select a dedicated archetype or pick Mix & Match to get 4 completely varied layouts.</p>
+          </div>
+        </div>
 
-          <p>{error}</p>
+        <div className="modern-create-form__styles-grid">
+          {PRESET_STYLES.map((style) => {
+            const Icon = style.icon;
+            const isSelected = form.style === style.value;
+            return (
+              <div
+                key={style.value}
+                className={`modern-style-card ${isSelected ? "is-selected" : ""}`}
+                onClick={() => setForm((prev) => ({ ...prev, style: style.value }))}
+                style={{ "--card-gradient": style.gradient }}
+              >
+                <div className="modern-style-card__badge">{style.tag}</div>
+                <div className="modern-style-card__icon-wrap">
+                  <Icon size={22} />
+                </div>
+                <h4>{style.label}</h4>
+                <p>{style.description}</p>
+                <div className="modern-style-card__radio">
+                  <div className="radio-dot" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-          <button
-            type="button"
-            aria-label="Close error"
-            onClick={() =>
-              setError("")
-            }
+      {/* 3. Color Palette Swatches */}
+      <div className="modern-create-form__section">
+        <div className="modern-create-form__section-header">
+          <div className="section-number">2</div>
+          <div>
+            <h3>Color Theme & Aesthetic Lighting</h3>
+            <p>Select radiant lighting and metallic foil color accents.</p>
+          </div>
+        </div>
+
+        <div className="modern-palette-row">
+          {COLOR_PALETTES.map((pal) => {
+            const isSelected = selectedColor.id === pal.id;
+            return (
+              <button
+                key={pal.id}
+                type="button"
+                className={`modern-palette-chip ${isSelected ? "is-selected" : ""}`}
+                onClick={() => handleSelectColor(pal)}
+              >
+                <span
+                  className="palette-swatch"
+                  style={{
+                    background: `linear-gradient(135deg, ${pal.primary} 0%, ${pal.secondary} 100%)`,
+                  }}
+                />
+                <span className="palette-name">{pal.name}</span>
+                {isSelected && <Check size={13} className="palette-check" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. Student Photo & College Logo */}
+      <div className="modern-create-form__section">
+        <div className="modern-create-form__section-header">
+          <div className="section-number">3</div>
+          <div>
+            <h3>Student Portrait & College Crest</h3>
+            <p>Upload photo with optional AI background removal and framing.</p>
+          </div>
+        </div>
+
+        <div className="modern-create-form__upload-grid">
+          {/* Student Photo */}
+          <div
+            className={`modern-uploader ${dragOver ? "drag-over" : ""} ${photoPreview ? "has-file" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              handlePhotoSelect(e.dataTransfer.files?.[0]);
+            }}
+            onClick={() => fileInputRef.current?.click()}
           >
-            ×
-          </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
+            />
+
+            {photoPreview ? (
+              <div className="modern-uploader__preview-wrap">
+                <div className="modern-uploader__cutout-preview">
+                  <img src={photoPreview} alt="Student Portrait" />
+                </div>
+                <div className="modern-uploader__preview-details">
+                  <strong>{photo?.name || "Student Photo"}</strong>
+                  <span className="ai-tag">
+                    {form.removeBackground ? "✨ AI Cutout Active" : "🖼️ Full Photo Frame"}
+                  </span>
+                  <small>Click to change photo</small>
+                </div>
+              </div>
+            ) : (
+              <div className="modern-uploader__empty">
+                <div className="modern-uploader__icon">
+                  <Upload size={24} />
+                </div>
+                <strong>Upload Student Portrait</strong>
+                <p>Drag & drop or click to browse (JPG, PNG)</p>
+                <span className="modern-uploader__pill">
+                  {form.removeBackground ? "AI Auto-Cutout Enabled" : "Original Frame Enabled"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* College Logo (Optional) */}
+          <div
+            className={`modern-uploader modern-uploader--logo ${logoPreview ? "has-file" : ""}`}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            <input
+              type="file"
+              ref={logoInputRef}
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => handleLogoSelect(e.target.files?.[0])}
+            />
+
+            {logoPreview ? (
+              <div className="modern-uploader__preview-wrap">
+                <img src={logoPreview} alt="College Logo" className="logo-preview-img" />
+                <div className="modern-uploader__preview-details">
+                  <strong>{logo?.name || "College Crest"}</strong>
+                  <small>Click to change logo</small>
+                </div>
+              </div>
+            ) : (
+              <div className="modern-uploader__empty">
+                <div className="modern-uploader__icon">
+                  <GraduationCap size={22} />
+                </div>
+                <strong>College Crest / Logo</strong>
+                <p>Optional campus seal to render on header</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* AI Background Removal Toggle Feature */}
+        <div
+          className={`modern-toggle-box ${form.removeBackground ? "is-active" : ""}`}
+          onClick={() => setForm((prev) => ({ ...prev, removeBackground: !prev.removeBackground }))}
+        >
+          <div className="modern-toggle-info">
+            <div className="modern-toggle-title">
+              <Scissors size={18} className="toggle-icon" />
+              <strong>AI Automatic Background Removal</strong>
+              <span className={`toggle-pill ${form.removeBackground ? "pill--cutout" : "pill--frame"}`}>
+                {form.removeBackground ? "✨ Cutout Mode ON" : "🖼️ Full Photo Frame"}
+              </span>
+            </div>
+            <p>
+              {form.removeBackground
+                ? "Isolates the student cleanly from background and blends directly into 3D AI atmosphere."
+                : "Keeps original photo background intact inside a styled luxury gold border frame."}
+            </p>
+          </div>
+
+          <div className={`modern-switch ${form.removeBackground ? "is-on" : ""}`}>
+            <div className="switch-thumb" />
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Student Details & Live Interactive Mockup */}
+      <div className="modern-create-form__section">
+        <div className="modern-create-form__section-header">
+          <div className="section-number">4</div>
+          <div>
+            <h3>Student Details & Live Design Mockup</h3>
+            <p>Personalize typography, department, and view real-time layout preview.</p>
+          </div>
+        </div>
+
+        <div className="modern-create-form__split-layout">
+          {/* Input Fields */}
+          <div className="modern-create-form__fields-grid">
+            <div className="modern-field">
+              <label>
+                <User size={15} />
+                <span>Student Full Name *</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. PETER PARKER"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+
+            <div className="modern-field">
+              <label>
+                <Sparkles size={15} />
+                <span>Birthday Heading</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. HAPPY BIRTHDAY"
+                value={form.birthdayHeading}
+                onChange={(e) => setForm({ ...form, birthdayHeading: e.target.value })}
+              />
+            </div>
+
+            <div className="modern-field">
+              <label>
+                <GraduationCap size={15} />
+                <span>Department & Year</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Dept. of Computer Science • Final Year"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+              />
+            </div>
+
+            <div className="modern-field">
+              <label>
+                <Building2 size={15} />
+                <span>College Name</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. COLLEGE OF ENGINEERING & TECHNOLOGY"
+                value={form.collegeName}
+                onChange={(e) => setForm({ ...form, collegeName: e.target.value })}
+              />
+            </div>
+
+            <div className="modern-field modern-field--full">
+              <label>
+                <Calendar size={15} />
+                <span>Roll Number / Register ID</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 21CS108"
+                value={form.rollNo}
+                onChange={(e) => setForm({ ...form, rollNo: e.target.value })}
+              />
+            </div>
+
+            <div className="modern-field modern-field--full">
+              <label>
+                <Sparkles size={15} />
+                <span>Birthday Wish Quote</span>
+              </label>
+              <textarea
+                rows="3"
+                placeholder="Write an inspiring birthday wish for the student..."
+                value={form.birthdayQuote}
+                onChange={(e) => setForm({ ...form, birthdayQuote: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Interactive Live Mockup Card */}
+          <div className="modern-live-mockup-wrap">
+            <div className="modern-live-mockup-header">
+              <Eye size={14} />
+              <span>Live Archetype Preview</span>
+              <span className="live-pill">{selectedStyle.label.split(" ")[1] || "Preview"}</span>
+            </div>
+
+            <div
+              className={`modern-mockup-card archetype--${form.style}`}
+              style={{
+                "--preview-primary": selectedColor.primary,
+                "--preview-secondary": selectedColor.secondary,
+              }}
+            >
+              {/* College Header */}
+              <div className="mockup-college">
+                {form.collegeName || "COLLEGE OF TECHNOLOGY"}
+              </div>
+
+              {/* Archetype-specific Layout Body */}
+              <div className="mockup-body">
+                {/* Photo preview container */}
+                <div className={`mockup-photo-frame ${!form.removeBackground ? "mockup-photo-frame--unmasked" : ""}`}>
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Student" className="mockup-photo-img" />
+                  ) : (
+                    <div className="mockup-photo-placeholder">
+                      <User size={40} />
+                    </div>
+                  )}
+                  {form.style === "sports" && <Award size={22} className="mockup-laurel-badge" />}
+                  {form.style === "luxury" && <Crown size={20} className="mockup-crown-badge" />}
+                </div>
+
+                {/* Typography Container */}
+                <div className="mockup-text-container">
+                  <div className="mockup-heading">
+                    {form.birthdayHeading || "HAPPY BIRTHDAY"}
+                  </div>
+                  <div className="mockup-name">{form.name || "STUDENT NAME"}</div>
+                  <div className="mockup-divider">
+                    <span className="divider-line" />
+                    <span className="divider-dot">✦</span>
+                    <span className="divider-line" />
+                  </div>
+                  <div className="mockup-dept">
+                    {form.department || "Dept. of Computer Science"}
+                  </div>
+                  <div className="mockup-quote">
+                    "{form.birthdayQuote ? form.birthdayQuote.slice(0, 80) + "..." : "Wishing you a spectacular birthday!"}"
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. AI Magic Studio Prompt */}
+      <div className="modern-create-form__section">
+        <div className="modern-create-form__section-header">
+          <div className="section-number">5</div>
+          <div>
+            <h3>AI Magic Studio Prompt & Lighting</h3>
+            <p>Fine-tune background atmosphere, spotlight rays, and party graphics.</p>
+          </div>
+        </div>
+
+        <div className="modern-prompt-box">
+          <textarea
+            rows="3"
+            placeholder="Describe your design theme (e.g. 3D metallic balloons, dramatic spotlights, gold laurel crest)..."
+            value={form.prompt}
+            onChange={(e) => setForm({ ...form, prompt: e.target.value })}
+          />
+
+          <div className="modern-prompt-suggestions">
+            <span>Click to add elements:</span>
+            {PROMPT_SUGGESTIONS.map((sug) => (
+              <button
+                key={sug}
+                type="button"
+                className="suggestion-chip"
+                onClick={() => handleAddPromptSuggestion(sug)}
+              >
+                + {sug}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="modern-create-form__error-alert">
+          <span>{error}</span>
         </div>
       )}
 
-      <section className="create-form__section">
-        <div className="create-form__section-heading">
-          <span className="create-form__step">
-            01
+      {/* Action Submit Bar */}
+      <div className="modern-create-form__submit-bar">
+        {/* Variation Count Selector (1 to 4) */}
+        <div className="modern-variation-selector">
+          <span className="var-label">
+            <Layers size={16} />
+            <span>Variation Count:</span>
           </span>
-
-          <div>
-            <h2>Upload assets</h2>
-
-            <p>
-              Add a clear student photo
-              and an optional college
-              logo.
-            </p>
-          </div>
-        </div>
-
-        <div className="create-form__upload-grid">
-          <div className="create-form__upload-card">
-            <div className="create-form__upload-title">
-              <div>
-                <h3>Student photo</h3>
-                <span>Required</span>
-              </div>
-
-              <p>
-                Maximum file size: 10 MB
-              </p>
-            </div>
-
-            {photoPreview ? (
-              <div className="create-form__preview">
-                <img
-                  src={photoPreview}
-                  alt="Student preview"
-                />
-
-                <div className="create-form__preview-actions">
-                  <label>
-                    Replace
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                      onChange={
-                        handlePhotoChange
-                      }
-                      disabled={
-                        isGenerating
-                      }
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={removePhoto}
-                    disabled={
-                      isGenerating
-                    }
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="create-form__dropzone">
-                <span className="create-form__upload-icon">
-                  ＋
-                </span>
-
-                <strong>
-                  Upload student photo
-                </strong>
-
-                <small>
-                  JPG, PNG, WEBP, GIF or
-                  AVIF
-                </small>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                  onChange={
-                    handlePhotoChange
-                  }
-                  disabled={
-                    isGenerating
-                  }
-                />
-              </label>
-            )}
-          </div>
-
-          <div className="create-form__upload-card">
-            <div className="create-form__upload-title">
-              <div>
-                <h3>College logo</h3>
-                <span className="is-optional">
-                  Optional
-                </span>
-              </div>
-
-              <p>
-                Maximum file size: 5 MB
-              </p>
-            </div>
-
-            {logoPreview ? (
-              <div className="create-form__preview create-form__preview--logo">
-                <img
-                  src={logoPreview}
-                  alt="College logo preview"
-                />
-
-                <div className="create-form__preview-actions">
-                  <label>
-                    Replace
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                      onChange={
-                        handleLogoChange
-                      }
-                      disabled={
-                        isGenerating
-                      }
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={removeLogo}
-                    disabled={
-                      isGenerating
-                    }
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="create-form__dropzone">
-                <span className="create-form__upload-icon">
-                  ＋
-                </span>
-
-                <strong>
-                  Upload college logo
-                </strong>
-
-                <small>
-                  Transparent PNG is
-                  recommended
-                </small>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                  onChange={
-                    handleLogoChange
-                  }
-                  disabled={
-                    isGenerating
-                  }
-                />
-              </label>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="create-form__section">
-        <div className="create-form__section-heading">
-          <span className="create-form__step">
-            02
-          </span>
-
-          <div>
-            <h2>Student details</h2>
-
-            <p>
-              These details will be
-              placed on the final poster.
-            </p>
-          </div>
-        </div>
-
-        <div className="create-form__fields">
-          <div className="create-form__field create-form__field--wide">
-            <label htmlFor="name">
-              Student name
-              <span>*</span>
-            </label>
-
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Enter student name"
-              maxLength={100}
-              disabled={isGenerating}
-              required
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="department">
-              Department
-            </label>
-
-            <input
-              id="department"
-              name="department"
-              type="text"
-              value={form.department}
-              onChange={handleChange}
-              placeholder="Computer Science"
-              maxLength={100}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="year">
-              Year
-            </label>
-
-            <input
-              id="year"
-              name="year"
-              type="text"
-              value={form.year}
-              onChange={handleChange}
-              placeholder="Final Year"
-              maxLength={50}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="rollNo">
-              Roll number
-            </label>
-
-            <input
-              id="rollNo"
-              name="rollNo"
-              type="text"
-              value={form.rollNo}
-              onChange={handleChange}
-              placeholder="21CS104"
-              maxLength={50}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="designation">
-              Designation
-            </label>
-
-            <input
-              id="designation"
-              name="designation"
-              type="text"
-              value={form.designation}
-              onChange={handleChange}
-              placeholder="Student Coordinator"
-              maxLength={80}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field create-form__field--wide">
-            <label htmlFor="collegeName">
-              College name
-            </label>
-
-            <input
-              id="collegeName"
-              name="collegeName"
-              type="text"
-              value={form.collegeName}
-              onChange={handleChange}
-              placeholder="ABC Engineering College"
-              maxLength={150}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="birthdayHeading">
-              Birthday heading
-            </label>
-
-            <input
-              id="birthdayHeading"
-              name="birthdayHeading"
-              type="text"
-              value={
-                form.birthdayHeading
-              }
-              onChange={handleChange}
-              placeholder="HAPPY BIRTHDAY"
-              maxLength={60}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="date">
-              Birthday date
-            </label>
-
-            <input
-              id="date"
-              name="date"
-              type="date"
-              value={form.date}
-              onChange={handleChange}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field create-form__field--full">
-            <label htmlFor="birthdayQuote">
-              Birthday wish
-            </label>
-
-            <textarea
-              id="birthdayQuote"
-              name="birthdayQuote"
-              value={
-                form.birthdayQuote
-              }
-              onChange={handleChange}
-              placeholder="May your birthday bring happiness, success and unforgettable memories."
-              rows={4}
-              maxLength={350}
-              disabled={isGenerating}
-            />
-
-            <span className="create-form__character-count">
-              {
-                form.birthdayQuote
-                  .length
-              }
-              /350
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section className="create-form__section">
-        <div className="create-form__section-heading">
-          <span className="create-form__step">
-            03
-          </span>
-
-          <div>
-            <h2>
-              AI design preferences
-            </h2>
-
-            <p>
-              Select a visual style and
-              describe the design you
-              want.
-            </p>
-          </div>
-        </div>
-
-        <div className="create-form__style-grid">
-          {STYLE_OPTIONS.map(
-            (styleOption) => (
+          <div className="var-options">
+            {[1, 2, 3, 4].map((num) => (
               <button
-                key={
-                  styleOption.value
-                }
+                key={num}
                 type="button"
-                className={`create-form__style-card ${
-                  form.style ===
-                  styleOption.value
-                    ? "is-active"
-                    : ""
-                }`}
-                onClick={() =>
-                  setForm(
-                    (currentForm) => ({
-                      ...currentForm,
-                      style:
-                        styleOption.value,
-                    })
-                  )
-                }
-                disabled={isGenerating}
+                className={`var-chip ${form.variationCount === num ? "is-active" : ""}`}
+                onClick={() => setForm((prev) => ({ ...prev, variationCount: num }))}
               >
-                <span>
-                  {styleOption.label}
-                </span>
-
-                <small>
-                  {
-                    styleOption.description
-                  }
-                </small>
+                {num} {num === 1 ? "Poster" : "Variations"}
               </button>
-            )
-          )}
-        </div>
-
-        <div className="create-form__selected-style">
-          Selected style:
-          <strong>
-            {selectedStyle.label}
-          </strong>
-        </div>
-
-        <div className="create-form__fields">
-          <div className="create-form__field create-form__field--full">
-            <label htmlFor="prompt">
-              Describe your poster
-              <span>*</span>
-            </label>
-
-            <textarea
-              id="prompt"
-              name="prompt"
-              value={form.prompt}
-              onChange={handleChange}
-              placeholder="Example: Premium Formula 1 birthday poster with a red racing car, dramatic speed trails, dark cinematic background, gold lighting and space for the student portrait."
-              rows={6}
-              maxLength={1000}
-              disabled={isGenerating}
-              required
-            />
-
-            <span className="create-form__character-count">
-              {form.prompt.length}
-              /1000
-            </span>
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="theme">
-              Theme
-            </label>
-
-            <input
-              id="theme"
-              name="theme"
-              type="text"
-              value={form.theme}
-              onChange={handleChange}
-              placeholder="Racing, royal, floral..."
-              maxLength={100}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="colors">
-              Preferred colors
-            </label>
-
-            <input
-              id="colors"
-              name="colors"
-              type="text"
-              value={form.colors}
-              onChange={handleChange}
-              placeholder="Black, red and gold"
-              maxLength={100}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="create-form__field">
-            <label htmlFor="variationCount">
-              Number of variations
-            </label>
-
-            <select
-              id="variationCount"
-              name="variationCount"
-              value={
-                form.variationCount
-              }
-              onChange={handleChange}
-              disabled={isGenerating}
-            >
-              <option value="1">
-                1 poster
-              </option>
-
-              <option value="2">
-                2 posters
-              </option>
-
-              <option value="3">
-                3 posters
-              </option>
-
-              <option value="4">
-                4 posters
-              </option>
-
-              <option value="5">
-                5 posters
-              </option>
-
-              <option value="6">
-                6 posters
-              </option>
-            </select>
-          </div>
-
-          <div className="create-form__field create-form__field--toggle">
-            <label htmlFor="removeBackground">
-              Remove photo background
-            </label>
-
-            <label className="create-form__switch">
-              <input
-                id="removeBackground"
-                name="removeBackground"
-                type="checkbox"
-                checked={
-                  form.removeBackground
-                }
-                onChange={handleChange}
-                disabled={isGenerating}
-              />
-
-              <span className="create-form__switch-slider" />
-            </label>
-
-            <small>
-              Keep enabled for a clean,
-              professional portrait cutout.
-            </small>
+            ))}
           </div>
         </div>
-      </section>
-
-      <div className="create-form__footer">
-        <button
-          type="button"
-          className="create-form__reset-button"
-          onClick={handleReset}
-          disabled={isGenerating}
-        >
-          Reset
-        </button>
 
         <button
           type="submit"
-          className="create-form__generate-button"
-          disabled={
-            isGenerating ||
-            serviceStatus.checking
-          }
+          className="modern-create-form__generate-button"
+          disabled={isGenerating}
         >
           {isGenerating ? (
             <>
-              <span className="create-form__spinner" />
-              Generating premium
-              posters...
+              <RefreshCw size={20} className="spin-icon" />
+              <span>Crafting {form.variationCount} AI Poster Variations...</span>
             </>
           ) : (
             <>
-              <span>✦</span>
-              Generate Birthday Posters
+              <Wand2 size={20} />
+              <span>Generate {form.variationCount} AI Poster{form.variationCount > 1 ? "s" : ""}</span>
             </>
           )}
         </button>
       </div>
-
-      {isGenerating && (
-        <div className="create-form__generating-note">
-          <strong>
-            SmartWish AI is creating
-            your designs.
-          </strong>
-
-          <p>
-            AI background generation
-            and poster composition may
-            take a few moments. Please
-            keep this page open.
-          </p>
-        </div>
-      )}
     </form>
   );
 }

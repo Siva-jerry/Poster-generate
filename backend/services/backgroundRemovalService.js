@@ -381,6 +381,7 @@ async function runWithTimeout(
 
 async function runBackgroundRemoval({
   input,
+  inputPath,
   timeoutMs =
     DEFAULT_REMOVE_TIMEOUT_MS,
 }) {
@@ -395,11 +396,26 @@ async function runBackgroundRemoval({
       10 * 60 * 1000
     );
 
+  let removalInput;
+
+  if (Buffer.isBuffer(input)) {
+    removalInput = new Blob([input], { type: "image/png" });
+  } else if (input instanceof Uint8Array) {
+    removalInput = new Blob([input], { type: "image/png" });
+  } else if (typeof inputPath === "string" && inputPath.trim()) {
+    const fileBytes = await fs.promises.readFile(inputPath);
+    removalInput = new Blob([fileBytes], { type: "image/png" });
+  } else if (typeof Blob !== "undefined" && input instanceof Blob) {
+    removalInput = input;
+  } else {
+    removalInput = input;
+  }
+
   let result;
 
   try {
     result = await runWithTimeout(
-      removeBackgroundFunction(input, {
+      removeBackgroundFunction(removalInput, {
         output: {
           format: "image/png",
           quality: 1,
@@ -577,6 +593,7 @@ async function removeImageBackground(
     transparentImageBuffer =
       await runBackgroundRemoval({
         input: sourceBuffer,
+        inputPath,
         timeoutMs,
       });
 

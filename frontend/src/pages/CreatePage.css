@@ -904,6 +904,7 @@
   gap: 10px;
 }
 
+.create-page__edit-button,
 .create-page__preview-button,
 .create-page__download-button {
   min-height: 44px;
@@ -918,6 +919,18 @@
     transform 0.2s ease,
     box-shadow 0.2s ease,
     opacity 0.2s ease;
+}
+
+.create-page__edit-button {
+  color: #ffffff;
+  border: 0;
+  background: linear-gradient(135deg, #7c3cff, #ff3864);
+  box-shadow: 0 10px 24px rgba(124, 60, 255, 0.25);
+}
+
+.create-page__edit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(124, 60, 255, 0.35);
 }
 
 .create-page__preview-button {

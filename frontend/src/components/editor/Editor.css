@@ -636,6 +636,7 @@
 
   display: grid;
   grid-template-rows:
+    48px
     minmax(0, 1fr)
     var(--editor-pages-height);
 

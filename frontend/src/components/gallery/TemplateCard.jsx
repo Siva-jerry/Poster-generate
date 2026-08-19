@@ -388,12 +388,10 @@ function TemplateCard({
               <img
                 src={previewUrl}
                 alt={`${templateName} template preview`}
-                loading="lazy"
-                onLoad={() =>
-                  setImageLoaded(true)
-                }
-                onError={() => {
-                  setImageLoaded(false);
+                loading="eager"
+                onLoad={() => setImageLoaded(true)}
+                onError={(e) => {
+                  console.error("Preview image load failed:", previewUrl, e);
                   setImageFailed(true);
                 }}
               />
@@ -403,20 +401,24 @@ function TemplateCard({
         {(!previewUrl ||
           imageFailed) && (
           <div className="template-card__fallback">
-            <Sparkles size={24} />
+            <span className="template-card__fallback-college">
+              ★ CAMPUS CELEBRATION ★
+            </span>
 
-            <strong>
+            <strong className="template-card__fallback-heading">
               HAPPY BIRTHDAY
             </strong>
 
             <div className="template-card__fallback-person">
               <span />
               <span />
+              <small>STUDENT PHOTO</small>
             </div>
 
-            <small>
-              Preview preparing
-            </small>
+            <div className="template-card__fallback-badge">
+              <strong>STUDENT NAME</strong>
+              <small>DEPARTMENT & YEAR</small>
+            </div>
           </div>
         )}
 

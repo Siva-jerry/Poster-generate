@@ -3,6 +3,7 @@ const express = require("express");
 const {
   listTemplates,
   showTemplate,
+  getTemplateSvgPreview,
   listTemplateFilters,
   listSimilarTemplates,
 } = require("../controllers/templateController");
@@ -13,12 +14,6 @@ const router = express.Router();
 |--------------------------------------------------------------------------
 | GET /api/templates
 |--------------------------------------------------------------------------
-|
-| Example:
-| /api/templates?page=1&limit=20
-| /api/templates?category=luxury
-| /api/templates?search=black gold
-|
 */
 
 router.get("/", listTemplates);
@@ -30,6 +25,14 @@ router.get("/", listTemplates);
 */
 
 router.get("/filters", listTemplateFilters);
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/templates/:templateId/preview.svg
+|--------------------------------------------------------------------------
+*/
+
+router.get("/:templateId/preview.svg", getTemplateSvgPreview);
 
 /*
 |--------------------------------------------------------------------------

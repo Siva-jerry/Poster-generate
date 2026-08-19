@@ -3,7 +3,7 @@ const decorationSets = [
     id: "gold-particles",
     name: "Gold Particles",
     category: "luxury",
-    tags: ["gold", "particles", "sparkle"],
+    tags: ["gold", "particles", "sparkle", "luxury"],
     elements: [
       {
         type: "particles",
@@ -30,7 +30,7 @@ const decorationSets = [
     id: "neon-rings",
     name: "Neon Rings",
     category: "neon",
-    tags: ["neon", "rings", "glow"],
+    tags: ["neon", "rings", "glow", "modern"],
     elements: [
       {
         type: "ring",
@@ -56,7 +56,7 @@ const decorationSets = [
     id: "floral-corners",
     name: "Floral Corners",
     category: "floral",
-    tags: ["flowers", "corners", "elegant"],
+    tags: ["flowers", "corners", "elegant", "floral"],
     elements: [
       {
         type: "floral",
@@ -83,7 +83,7 @@ const decorationSets = [
     id: "editorial-lines",
     name: "Editorial Lines",
     category: "magazine",
-    tags: ["lines", "magazine", "minimal"],
+    tags: ["lines", "magazine", "minimal", "editorial"],
     elements: [
       {
         type: "line",
@@ -110,7 +110,7 @@ const decorationSets = [
     id: "geometric-shapes",
     name: "Geometric Shapes",
     category: "modern",
-    tags: ["geometric", "modern", "shapes"],
+    tags: ["geometric", "modern", "shapes", "clean"],
     elements: [
       {
         type: "circle",
@@ -137,7 +137,7 @@ const decorationSets = [
     id: "celebration-confetti",
     name: "Celebration Confetti",
     category: "birthday",
-    tags: ["confetti", "birthday", "colourful"],
+    tags: ["confetti", "birthday", "colourful", "party"],
     elements: [
       {
         type: "confetti",
@@ -164,7 +164,7 @@ const decorationSets = [
     id: "spotlight-smoke",
     name: "Spotlight Smoke",
     category: "cinematic",
-    tags: ["spotlight", "smoke", "cinematic"],
+    tags: ["spotlight", "smoke", "cinematic", "dramatic"],
     elements: [
       {
         type: "spotlight",
@@ -181,6 +181,134 @@ const decorationSets = [
         position: "all",
         count: 25,
         opacity: 0.35,
+      },
+    ],
+  },
+
+  {
+    id: "cyber-grid",
+    name: "Cyber Grid",
+    category: "futuristic",
+    tags: ["cyber", "grid", "future", "laser", "tech"],
+    elements: [
+      {
+        type: "grid",
+        position: "perspective-floor",
+        opacity: 0.38,
+      },
+      {
+        type: "laser-beams",
+        position: "top-to-bottom",
+        opacity: 0.45,
+      },
+      {
+        type: "glow",
+        position: "photo-frame",
+        size: 550,
+        opacity: 0.5,
+      },
+    ],
+  },
+
+  {
+    id: "star-sparkles",
+    name: "Star Sparkles",
+    category: "luxury",
+    tags: ["stars", "sparkles", "twinkle", "glamour", "vip"],
+    elements: [
+      {
+        type: "stars",
+        count: 18,
+        position: "all",
+        opacity: 0.7,
+      },
+      {
+        type: "glow",
+        position: "center",
+        size: 600,
+        opacity: 0.35,
+      },
+      {
+        type: "line",
+        position: "below-name",
+        width: 320,
+        height: 2,
+      },
+    ],
+  },
+
+  {
+    id: "vintage-border",
+    name: "Vintage Border",
+    category: "creative",
+    tags: ["vintage", "border", "retro", "classic", "frame"],
+    elements: [
+      {
+        type: "border",
+        inset: 40,
+        strokeWidth: 3,
+        opacity: 0.6,
+      },
+      {
+        type: "corner-ornaments",
+        size: 80,
+        opacity: 0.75,
+      },
+      {
+        type: "subtle-grain",
+        opacity: 0.15,
+      },
+    ],
+  },
+
+  {
+    id: "athletic-energy-streaks",
+    name: "Athletic Energy Streaks",
+    category: "sports",
+    tags: ["sports", "streaks", "speed", "energy", "champion"],
+    elements: [
+      {
+        type: "speed-lines",
+        position: "diagonal",
+        count: 8,
+        opacity: 0.4,
+      },
+      {
+        type: "accent-polygon",
+        position: "bottom-right",
+        opacity: 0.25,
+      },
+      {
+        type: "burst",
+        position: "top-left",
+        opacity: 0.3,
+      },
+    ],
+  },
+
+  {
+    id: "golden-laurel-wreath",
+    name: "Golden Laurel Wreath",
+    category: "college",
+    tags: ["laurel", "wreath", "college", "graduate", "honor", "halloffame"],
+    elements: [
+      {
+        type: "laurel-crest",
+        position: "above-photo",
+        scale: 0.9,
+        opacity: 0.85,
+      },
+      {
+        type: "stars-row",
+        position: "below-heading",
+        count: 5,
+        opacity: 0.8,
+      },
+      {
+        type: "glow",
+        position: "center",
+        size: 580,
+        opacity: 0.3,
       },
     ],
   },

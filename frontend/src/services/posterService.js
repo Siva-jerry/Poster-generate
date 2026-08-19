@@ -63,62 +63,66 @@ export async function getPosterStatus() {
 |--------------------------------------------------------------------------
 */
 
-export async function generatePoster({
-  photo,
-  logo,
-  name,
-  department,
-  year,
-  rollNo,
-  collegeName,
-  birthdayQuote,
-  birthdayHeading,
-  designation,
-  date,
-  prompt,
-  style = "luxury",
-  theme = "",
-  colors = "",
-  variationCount = 4,
-  removeBackground = true,
-}) {
-  const formData = new FormData();
+export async function generatePoster(input) {
+  let body;
 
-  if (photo) {
-    formData.append("photo", photo);
+  if (input instanceof FormData) {
+    body = input;
+  } else {
+    const {
+      photo,
+      logo,
+      name,
+      department,
+      year,
+      rollNo,
+      collegeName,
+      birthdayQuote,
+      birthdayHeading,
+      designation,
+      date,
+      prompt,
+      style = "luxury",
+      theme = "",
+      colors = "",
+      variationCount = 4,
+      removeBackground = true,
+    } = input || {};
+
+    const formData = new FormData();
+
+    if (photo) {
+      formData.append("photo", photo);
+    }
+
+    if (logo) {
+      formData.append("logo", logo);
+    }
+
+    if (name) formData.append("name", name);
+    if (department) formData.append("department", department);
+    if (year) formData.append("year", year);
+    if (rollNo) formData.append("rollNo", rollNo);
+    if (collegeName) formData.append("collegeName", collegeName);
+    if (birthdayQuote) formData.append("birthdayQuote", birthdayQuote);
+    if (birthdayHeading) formData.append("birthdayHeading", birthdayHeading);
+    if (designation) formData.append("designation", designation);
+    if (date) formData.append("date", date);
+    if (prompt) formData.append("prompt", prompt);
+    formData.append("style", style);
+    if (theme) formData.append("theme", theme);
+    if (colors) formData.append("colors", colors);
+    formData.append("variationCount", variationCount);
+    formData.append("removeBackground", removeBackground);
+
+    body = formData;
   }
-
-  if (logo) {
-    formData.append("logo", logo);
-  }
-
-  formData.append("name", name);
-  formData.append("department", department);
-  formData.append("year", year);
-  formData.append("rollNo", rollNo);
-  formData.append("collegeName", collegeName);
-  formData.append("birthdayQuote", birthdayQuote);
-  formData.append("birthdayHeading", birthdayHeading);
-  formData.append("designation", designation);
-  formData.append("date", date);
-  formData.append("prompt", prompt);
-  formData.append("style", style);
-  formData.append("theme", theme);
-  formData.append("colors", colors);
-  formData.append(
-    "variationCount",
-    variationCount
-  );
-  formData.append(
-    "removeBackground",
-    removeBackground
-  );
 
   return request(
     "/api/posters/generate",
     {
       method: "POST",
-      body: formData,
+      body,
     }
   );
 }

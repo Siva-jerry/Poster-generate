@@ -90,90 +90,109 @@ svg {
   position: absolute;
   inset: 0;
 
-  display: grid;
-  justify-items: center;
-  align-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
 
-  padding: 28px;
+  padding: 38px 16px 16px;
 
   color: #ffffff;
   text-align: center;
 }
 
-.template-card__fallback
-> svg {
-  margin-bottom: 15px;
-
-  color: #ffe475;
+.template-card__fallback-college {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffd700;
+  padding: 3px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: var(--radius-round);
+  backdrop-filter: blur(6px);
 }
 
-.template-card__fallback
-> strong {
-  font-family:
-    var(--font-heading);
-
-  font-size:
-    clamp(
-      1.4rem,
-      3vw,
-      2.3rem
-    );
-
-  line-height: 0.92;
-}
-
-.template-card__fallback
-small {
-  margin-top: 15px;
-
-  opacity: 0.7;
+.template-card__fallback-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(1.2rem, 2.6vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 0.95;
+  background: linear-gradient(135deg, #fff2a8, #d4af37, #ffdf78, #b38728);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+  margin-top: 4px;
 }
 
 .template-card__fallback-person {
   position: relative;
-
-  width: 110px;
-  height: 150px;
-
-  margin-top: 15px;
+  width: 100px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-.template-card__fallback-person
-span:first-child {
-  position: absolute;
-  top: 0;
-  left: 50%;
-
-  width: 50px;
-  height: 60px;
-
-  background:
-    rgba(255, 255, 255, 0.7);
-
-  border-radius:
-    46% 46% 45% 45%;
-
-  transform:
-    translateX(-50%);
+.template-card__fallback-person span:first-child {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  margin-bottom: 6px;
 }
 
-.template-card__fallback-person
-span:last-child {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
+.template-card__fallback-person span:nth-child(2) {
+  width: 65px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 35px 35px 8px 8px;
+}
 
-  width: 110px;
-  height: 105px;
+.template-card__fallback-person small {
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ffd700;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 
-  background:
-    rgba(255, 255, 255, 0.62);
+.template-card__fallback-badge {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(8, 8, 12, 0.78);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-  border-radius:
-    48% 48% 15% 15%;
+.template-card__fallback-badge strong {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
 
-  transform:
-    translateX(-50%);
+.template-card__fallback-badge small {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #ffd700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .template-card__top {

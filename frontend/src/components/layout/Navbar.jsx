@@ -2,6 +2,8 @@ import {
   Menu,
   X,
   ArrowRight,
+  Sparkles,
+  Palette,
 } from "lucide-react";
 
 import {
@@ -27,8 +29,13 @@ const navigationItems = [
     path: "/templates",
   },
   {
-    label: "Create",
+    label: "Create Poster",
     path: "/create",
+  },
+  {
+    label: "Canvas Editor",
+    path: "/editor",
+    isNew: true,
   },
   {
     label: "My Designs",
@@ -80,6 +87,7 @@ function Navbar() {
                 }) =>
                   [
                     "navbar__link",
+                    item.isNew ? "navbar__link--highlight" : "",
                     isActive
                       ? "navbar__link--active"
                       : "",
@@ -88,7 +96,9 @@ function Navbar() {
                     .join(" ")
                 }
               >
-                {item.label}
+                {item.isNew && <Sparkles size={14} className="navbar__sparkle-badge" />}
+                <span>{item.label}</span>
+                {item.isNew && <span className="navbar__pill-tag">NEW</span>}
               </NavLink>
             )
           )}

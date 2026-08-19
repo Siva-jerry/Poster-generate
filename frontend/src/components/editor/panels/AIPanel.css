@@ -1,0 +1,173 @@
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ai-panel__hero {
+  background: linear-gradient(135deg, #1e1b4b, #311042);
+  padding: 16px;
+  border-radius: 10px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ffd700;
+}
+
+.ai-panel__hero h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.ai-panel__hero p {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.ai-panel__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ai-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-panel__field label,
+.ai-panel__prompt-box label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.ai-panel__field input {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #1e293b;
+  outline: none;
+}
+
+.ai-panel__field input:focus,
+.ai-panel__prompt-box textarea:focus {
+  border-color: #7c3cff;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(124, 60, 255, 0.1);
+}
+
+.ai-panel__prompt-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-panel__prompt-box textarea {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #1e293b;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.ai-panel__presets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-panel__presets > span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.ai-panel__preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-panel__preset-chips button {
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-panel__preset-chips button:hover {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.ai-panel__generate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: linear-gradient(135deg, #7c3cff, #ff3864);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(124, 60, 255, 0.25);
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 4px;
+}
+
+.ai-panel__generate-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(124, 60, 255, 0.35);
+}
+
+.ai-panel__generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-panel__success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

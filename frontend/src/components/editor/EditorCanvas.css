@@ -290,11 +290,6 @@ button:disabled {
 
 .editor-canvas__element {
   display: block;
-
-  width: 1080px;
-  height: 1350px;
-
-  background: #ffffff;
 }
 
 /*
@@ -314,15 +309,13 @@ button:disabled {
 
   overflow: visible;
 
-  background: #ffffff;
-
-  border-radius: 3px;
+  border-radius: 6px;
 
   box-shadow:
-    0 34px 85px
-    rgba(35, 24, 28, 0.2),
+    0 24px 70px
+    rgba(0, 0, 0, 0.45),
     0 8px 24px
-    rgba(35, 24, 28, 0.1);
+    rgba(0, 0, 0, 0.25);
 
   transition:
     box-shadow

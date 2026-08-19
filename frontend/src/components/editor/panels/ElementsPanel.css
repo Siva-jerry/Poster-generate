@@ -1,0 +1,128 @@
+.elements-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 14px;
+}
+
+.elements-panel__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.elements-panel__search:focus-within {
+  background: #ffffff;
+  border-color: #7c3cff;
+  box-shadow: 0 0 0 3px rgba(124, 60, 255, 0.12);
+  color: #1e293b;
+}
+
+.elements-panel__search input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 0.85rem;
+  color: #1e293b;
+  outline: none;
+}
+
+.elements-panel__cats {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.elements-panel__cats::-webkit-scrollbar {
+  display: none;
+}
+
+.elements-panel__cats button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.elements-panel__cats button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.elements-panel__cats button.active {
+  background: #7c3cff;
+  border-color: #7c3cff;
+  color: #ffffff;
+}
+
+.elements-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+}
+
+.elements-panel__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  background: #181124;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.elements-panel__item:hover {
+  background: #241638;
+  border-color: #7c3cff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(124, 60, 255, 0.22);
+}
+
+.elements-panel__item-preview {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elements-panel__item-preview svg {
+  width: 100%;
+  height: 100%;
+  max-width: 72px;
+  max-height: 72px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.elements-panel__item span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  text-align: center;
+  line-height: 1.2;
+}

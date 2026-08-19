@@ -161,7 +161,7 @@ function TemplateGallery() {
 
         department:
           studentData.department ||
-          "Department",
+          "Dept. of Computer Science",
 
         year:
           studentData.year ||
@@ -169,20 +169,18 @@ function TemplateGallery() {
 
         rollNo:
           studentData.rollNo ||
-          "Roll Number",
+          "Roll No: 2026CS101",
 
         birthdayQuote:
-          studentData
-            .birthdayQuote ||
-          "Wishing you happiness and success!",
+          studentData.birthdayQuote ||
+          "Wishing you success, happiness and a bright future!",
 
         studentPhoto:
           selectedPhoto,
 
         collegeName:
-          studentData
-            .collegeName ||
-          null,
+          studentData.collegeName ||
+          "CAMPUS CELEBRATION",
 
         collegeLogo: null,
       };
@@ -466,14 +464,17 @@ function TemplateGallery() {
     );
   };
 
-  const resolvePreviewUrl = (
-    template
-  ) =>
-    template.preview?.url ||
-    previewUrls[
-      template.id
-    ] ||
-    null;
+  const resolvePreviewUrl = (template) => {
+    const raw = template?.preview?.url || previewUrls[template?.id];
+    if (raw) {
+      if (raw.startsWith("http") || raw.startsWith("data:")) return raw;
+      return `http://localhost:5000${raw.startsWith("/") ? "" : "/"}${raw}`;
+    }
+    if (template?.id) {
+      return `http://localhost:5000/api/templates/${encodeURIComponent(template.id)}/preview.svg`;
+    }
+    return null;
+  };
 
   return (
     <div className="template-gallery">
@@ -750,24 +751,17 @@ function TemplateGallery() {
               </h2>
 
               <p>
-                {
-                  previewModalTemplate
-                    .design?.layout
-                    ?.name
-                }
+                {typeof previewModalTemplate.design?.layout?.name === "string"
+                  ? previewModalTemplate.design.layout.name
+                  : previewModalTemplate.design?.layout?.title || "Modern Layout"}
                 {" · "}
-                {
-                  previewModalTemplate
-                    .design?.palette
-                    ?.name
-                }
+                {typeof previewModalTemplate.design?.palette?.name === "string"
+                  ? previewModalTemplate.design.palette.name
+                  : "Color Palette"}
                 {" · "}
-                {
-                  previewModalTemplate
-                    .design
-                    ?.typography
-                    ?.name
-                }
+                {typeof previewModalTemplate.design?.typography?.name === "string"
+                  ? previewModalTemplate.design.typography.name
+                  : previewModalTemplate.design?.typography?.title || "Typography"}
               </p>
 
               <AppButton

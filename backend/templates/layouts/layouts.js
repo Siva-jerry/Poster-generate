@@ -2,8 +2,9 @@ const layouts = [
   {
     id: "center-portrait",
     name: "Center Portrait",
+    title: "Center Portrait",
     category: "cinematic",
-    tags: ["portrait", "center", "premium"],
+    tags: ["portrait", "center", "premium", "cinematic"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -22,7 +23,7 @@ const layouts = [
       width: 900,
       align: "center",
     },
-    name: {
+    namePosition: {
       x: 90,
       y: 1110,
       width: 900,
@@ -45,8 +46,9 @@ const layouts = [
   {
     id: "left-portrait",
     name: "Left Portrait",
+    title: "Left Portrait",
     category: "magazine",
-    tags: ["portrait", "left", "editorial"],
+    tags: ["portrait", "left", "editorial", "magazine"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -65,7 +67,7 @@ const layouts = [
       width: 390,
       align: "left",
     },
-    name: {
+    namePosition: {
       x: 610,
       y: 580,
       width: 390,
@@ -88,8 +90,9 @@ const layouts = [
   {
     id: "right-portrait",
     name: "Right Portrait",
+    title: "Right Portrait",
     category: "modern",
-    tags: ["portrait", "right", "modern"],
+    tags: ["portrait", "right", "modern", "clean"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -108,7 +111,7 @@ const layouts = [
       width: 430,
       align: "left",
     },
-    name: {
+    namePosition: {
       x: 70,
       y: 560,
       width: 430,
@@ -131,8 +134,9 @@ const layouts = [
   {
     id: "full-photo",
     name: "Full Photo",
+    title: "Full Photo",
     category: "luxury",
-    tags: ["full-photo", "bold", "luxury"],
+    tags: ["full-photo", "bold", "luxury", "hero"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -151,7 +155,7 @@ const layouts = [
       width: 940,
       align: "center",
     },
-    name: {
+    namePosition: {
       x: 70,
       y: 1080,
       width: 940,
@@ -174,8 +178,9 @@ const layouts = [
   {
     id: "split-diagonal",
     name: "Split Diagonal",
+    title: "Split Diagonal",
     category: "creative",
-    tags: ["diagonal", "creative", "dynamic"],
+    tags: ["diagonal", "creative", "dynamic", "modern"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -194,7 +199,7 @@ const layouts = [
       width: 700,
       align: "left",
     },
-    name: {
+    namePosition: {
       x: 65,
       y: 780,
       width: 600,
@@ -217,8 +222,9 @@ const layouts = [
   {
     id: "circle-frame",
     name: "Circle Frame",
+    title: "Circle Frame",
     category: "floral",
-    tags: ["circle", "soft", "elegant"],
+    tags: ["circle", "soft", "elegant", "floral"],
     canvas: {
       width: 1080,
       height: 1350,
@@ -238,7 +244,7 @@ const layouts = [
       width: 900,
       align: "center",
     },
-    name: {
+    namePosition: {
       x: 90,
       y: 1020,
       width: 900,
@@ -254,6 +260,358 @@ const layouts = [
       x: 120,
       y: 1210,
       width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "college-hall-fame",
+    name: "Hall of Fame",
+    title: "Hall of Fame",
+    category: "college",
+    tags: ["college", "graduate", "trophy", "halloffame", "star"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 170,
+      y: 220,
+      width: 740,
+      height: 840,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 90,
+      y: 60,
+      width: 900,
+      align: "center",
+    },
+    namePosition: {
+      x: 90,
+      y: 1080,
+      width: 900,
+      align: "center",
+    },
+    details: {
+      x: 90,
+      y: 1165,
+      width: 900,
+      align: "center",
+    },
+    quote: {
+      x: 110,
+      y: 1235,
+      width: 860,
+      align: "center",
+    },
+  },
+
+  {
+    id: "sports-champion",
+    name: "Sports Champion",
+    title: "Sports Champion",
+    category: "sports",
+    tags: ["sports", "athlete", "dynamic", "champion", "energy"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 80,
+      y: 180,
+      width: 920,
+      height: 980,
+      rotation: 2,
+      align: "center",
+    },
+    heading: {
+      x: 60,
+      y: 50,
+      width: 960,
+      align: "center",
+    },
+    namePosition: {
+      x: 60,
+      y: 1100,
+      width: 960,
+      align: "center",
+    },
+    details: {
+      x: 100,
+      y: 1190,
+      width: 880,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1250,
+      width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "cyber-matrix",
+    name: "Cyber Matrix",
+    title: "Cyber Matrix",
+    category: "futuristic",
+    tags: ["cyber", "neon", "future", "tech", "matrix"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 160,
+      y: 240,
+      width: 760,
+      height: 860,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 80,
+      y: 70,
+      width: 920,
+      align: "center",
+    },
+    namePosition: {
+      x: 80,
+      y: 1120,
+      width: 920,
+      align: "center",
+    },
+    details: {
+      x: 110,
+      y: 1200,
+      width: 860,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1255,
+      width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "magazine-vogue",
+    name: "Magazine Vogue",
+    title: "Magazine Vogue",
+    category: "magazine",
+    tags: ["vogue", "cover", "magazine", "fashion", "luxury"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 100,
+      y: 210,
+      width: 880,
+      height: 1080,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 50,
+      y: 50,
+      width: 980,
+      align: "center",
+    },
+    namePosition: {
+      x: 60,
+      y: 1070,
+      width: 960,
+      align: "left",
+    },
+    details: {
+      x: 60,
+      y: 1165,
+      width: 700,
+      align: "left",
+    },
+    quote: {
+      x: 60,
+      y: 1230,
+      width: 750,
+      align: "left",
+    },
+  },
+
+  {
+    id: "vintage-polaroid",
+    name: "Vintage Polaroid",
+    title: "Vintage Polaroid",
+    category: "creative",
+    tags: ["polaroid", "vintage", "retro", "memories", "film"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 160,
+      y: 140,
+      width: 760,
+      height: 800,
+      rotation: -2,
+      align: "center",
+    },
+    heading: {
+      x: 80,
+      y: 970,
+      width: 920,
+      align: "center",
+    },
+    namePosition: {
+      x: 80,
+      y: 1060,
+      width: 920,
+      align: "center",
+    },
+    details: {
+      x: 100,
+      y: 1160,
+      width: 880,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1230,
+      width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "minimalist-hero",
+    name: "Minimalist Hero",
+    title: "Minimalist Hero",
+    category: "modern",
+    tags: ["minimal", "clean", "nordic", "spacing", "modern"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 210,
+      y: 310,
+      width: 660,
+      height: 760,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 80,
+      y: 100,
+      width: 920,
+      align: "center",
+    },
+    namePosition: {
+      x: 80,
+      y: 1100,
+      width: 920,
+      align: "center",
+    },
+    details: {
+      x: 120,
+      y: 1185,
+      width: 840,
+      align: "center",
+    },
+    quote: {
+      x: 140,
+      y: 1245,
+      width: 800,
+      align: "center",
+    },
+  },
+
+  {
+    id: "golden-arch",
+    name: "Golden Arch",
+    title: "Golden Arch",
+    category: "luxury",
+    tags: ["arch", "royal", "luxury", "frame", "grand"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 180,
+      y: 230,
+      width: 720,
+      height: 870,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 80,
+      y: 65,
+      width: 920,
+      align: "center",
+    },
+    namePosition: {
+      x: 80,
+      y: 1120,
+      width: 920,
+      align: "center",
+    },
+    details: {
+      x: 110,
+      y: 1200,
+      width: 860,
+      align: "center",
+    },
+    quote: {
+      x: 120,
+      y: 1255,
+      width: 840,
+      align: "center",
+    },
+  },
+
+  {
+    id: "bold-typography",
+    name: "Bold Typography",
+    title: "Bold Typography",
+    category: "cinematic",
+    tags: ["bold", "giant", "cinematic", "impact", "poster"],
+    canvas: {
+      width: 1080,
+      height: 1350,
+    },
+    photo: {
+      x: 140,
+      y: 280,
+      width: 800,
+      height: 800,
+      rotation: 0,
+      align: "center",
+    },
+    heading: {
+      x: 60,
+      y: 50,
+      width: 960,
+      align: "center",
+    },
+    namePosition: {
+      x: 60,
+      y: 1090,
+      width: 960,
+      align: "center",
+    },
+    details: {
+      x: 90,
+      y: 1185,
+      width: 900,
+      align: "center",
+    },
+    quote: {
+      x: 110,
+      y: 1245,
+      width: 860,
       align: "center",
     },
   },

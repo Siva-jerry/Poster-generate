@@ -1,7 +1,6 @@
 import {
   Bot,
-  Frame,
-  Image,
+  Layers,
   LayoutTemplate,
   Palette,
   Shapes,
@@ -29,19 +28,9 @@ const tools = [
     icon: Type,
   },
   {
-    id: "fonts",
-    label: "Fonts",
-    icon: Sparkles,
-  },
-  {
     id: "uploads",
     label: "Uploads",
     icon: Upload,
-  },
-  {
-    id: "photos",
-    label: "Photos",
-    icon: Image,
   },
   {
     id: "background",
@@ -49,14 +38,14 @@ const tools = [
     icon: Palette,
   },
   {
-    id: "frames",
-    label: "Frames",
-    icon: Frame,
+    id: "layers",
+    label: "Layers",
+    icon: Layers,
   },
   {
     id: "ai",
-    label: "AI Tools",
-    icon: Bot,
+    label: "AI Studio",
+    icon: Sparkles,
   },
 ];
 
@@ -84,6 +73,7 @@ function LeftSidebar({
               onClick={() =>
                 onToolChange(id)
               }
+              title={label}
             >
               <span>
                 <Icon size={21} />

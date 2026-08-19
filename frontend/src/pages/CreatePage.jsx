@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CreateForm from "../components/create/CreateForm";
 import "./CreatePage.css";
 
@@ -56,6 +57,7 @@ function sanitizeDownloadName(
 */
 
 function CreatePage() {
+  const navigate = useNavigate();
   const [isGenerating, setIsGenerating] =
     useState(false);
 
@@ -594,6 +596,25 @@ function CreatePage() {
                         <div className="create-page__main-actions">
                           <button
                             type="button"
+                            className="create-page__edit-button"
+                            onClick={() =>
+                              navigate("/editor", {
+                                state: {
+                                  posterImage: selectedPoster.url,
+                                  posterTitle: selectedPoster.title,
+                                  studentName: generationResult?.student?.name,
+                                  department: generationResult?.student?.department,
+                                  collegeName: generationResult?.student?.collegeName,
+                                  birthdayQuote: generationResult?.student?.birthdayQuote,
+                                },
+                              })
+                            }
+                          >
+                            🎨 Edit in Canvas Editor
+                          </button>
+
+                          <button
+                            type="button"
                             className="create-page__preview-button"
                             onClick={() =>
                               openPoster(
@@ -713,10 +734,7 @@ function CreatePage() {
 
                               <div className="create-page__variation-info">
                                 <strong>
-                                  Variation{" "}
-                                  {poster.variationNumber ||
-                                    index +
-                                      1}
+                                  {poster.archetypeTitle || `Variation ${poster.variationNumber || index + 1}`}
                                 </strong>
 
                                 <span>

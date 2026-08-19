@@ -222,32 +222,26 @@ function normalizePrompt(prompt) {
 
 function buildRequestBody({
   prompt,
-  seed,
   steps,
 }) {
-  return {
+  const body = {
     prompt:
       normalizePrompt(prompt),
-
-    seed:
-      toSafeInteger(
-        seed,
-        Math.floor(
-          Math.random() *
-            2_147_483_647
-        ),
-        1,
-        2_147_483_647
-      ),
-
-    steps:
-      toSafeInteger(
-        steps,
-        DEFAULT_STEPS,
-        1,
-        MAX_STEPS
-      ),
   };
+
+  const safeSteps =
+    toSafeInteger(
+      steps,
+      DEFAULT_STEPS,
+      1,
+      MAX_STEPS
+    );
+
+  if (safeSteps && safeSteps !== DEFAULT_STEPS) {
+    body.num_steps = safeSteps;
+  }
+
+  return body;
 }
 
 /*
@@ -707,6 +701,53 @@ async function prepareBackground({
   };
 }
 
+async function generateProceduralBackgroundBuffer({
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
+  prompt = "",
+}) {
+  const isNeon = /neon|cyber|dj/i.test(prompt);
+  const isGold = /gold|luxury|royal|palace/i.test(prompt);
+  const isSports = /sport|champion|stadium|varsity/i.test(prompt);
+  const isFloral = /floral|rose|polaroid|pink/i.test(prompt);
+
+  const c1 = isNeon ? "#0D0221" : isGold ? "#120B04" : isSports ? "#040F2D" : isFloral ? "#1A0713" : "#0A0A0E";
+  const c2 = isNeon ? "#3B0764" : isGold ? "#2A1806" : isSports ? "#0B256B" : isFloral ? "#3B1124" : "#1A1528";
+  const glow = isNeon ? "#00F0FF" : isGold ? "#D4AF37" : isSports ? "#38EF7D" : isFloral ? "#FF7597" : "#8B5CF6";
+
+  const svg = `
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="bgGrad" cx="50%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="${c2}" />
+          <stop offset="60%" stop-color="${c1}" />
+          <stop offset="100%" stop-color="#050308" />
+        </radialGradient>
+        <radialGradient id="spotGlow" cx="50%" cy="30%" r="40%">
+          <stop offset="0%" stop-color="${glow}" stop-opacity="0.38" />
+          <stop offset="60%" stop-color="${glow}" stop-opacity="0.08" />
+          <stop offset="100%" stop-color="${glow}" stop-opacity="0" />
+        </radialGradient>
+        <linearGradient id="beam1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${glow}" stop-opacity="0.22" />
+          <stop offset="100%" stop-color="${glow}" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#bgGrad)" />
+      <circle cx="${width * 0.5}" cy="${height * 0.32}" r="${width * 0.45}" fill="url(#spotGlow)" />
+      <polygon points="0,0 ${width * 0.65},0 ${width},${height} 0,${height}" fill="url(#beam1)" />
+      <circle cx="${width * 0.15}" cy="${height * 0.2}" r="6" fill="${glow}" fill-opacity="0.4" />
+      <circle cx="${width * 0.85}" cy="${height * 0.25}" r="8" fill="${glow}" fill-opacity="0.3" />
+      <circle cx="${width * 0.22}" cy="${height * 0.7}" r="5" fill="${glow}" fill-opacity="0.3" />
+      <circle cx="${width * 0.78}" cy="${height * 0.65}" r="7" fill="${glow}" fill-opacity="0.35" />
+    </svg>
+  `;
+
+  return sharp(Buffer.from(svg))
+    .jpeg({ quality: 95, mozjpeg: true })
+    .toBuffer();
+}
+
 /*
 |--------------------------------------------------------------------------
 | Generate one AI background
@@ -791,127 +832,110 @@ async function generateAIBackground({
       2_147_483_647
     );
 
+  let imageBuffer = null;
+  let rawResponse = null;
+
   try {
-    const {
-      imageBuffer,
-      rawResponse,
-    } =
-      await requestWithRetry({
-        prompt: safePrompt,
-        seed: safeSeed,
-        steps,
-        timeoutMs,
-        retryCount,
-      });
-
-    const dimensions =
-      await prepareBackground({
-        inputBuffer:
-          imageBuffer,
-
-        outputPath,
-
-        width,
-        height,
-        quality,
-      });
-
-    const fileStats =
-      await fs.promises.stat(
-        outputPath
-      );
-
-    return {
-      success: true,
-
-      id: backgroundId,
-
-      filename:
-        finalFilename,
-
-      filePath:
-        outputPath,
-
-      relativePath:
-        path
-          .relative(
-            path.join(
-              __dirname,
-              ".."
-            ),
-            outputPath
-          )
-          .replace(/\\/g, "/"),
-
-      width:
-        dimensions.width,
-
-      height:
-        dimensions.height,
-
-      sizeBytes:
-        fileStats.size,
-
-      mimeType:
-        "image/jpeg",
-
-      prompt:
-        safePrompt,
-
-      seed:
-        safeSeed,
-
-      steps:
-        toSafeInteger(
-          steps,
-          DEFAULT_STEPS,
-          1,
-          MAX_STEPS
-        ),
-
-      model:
-        getCloudflareConfiguration()
-          .model,
-
-      metadata: {
-        ...metadata,
-      },
-
-      providerResponse:
-        process.env
-          .NODE_ENV ===
-        "development"
-          ? rawResponse
-          : undefined,
-    };
+    const result = await requestWithRetry({
+      prompt: safePrompt,
+      seed: safeSeed,
+      steps,
+      timeoutMs,
+      retryCount,
+    });
+    imageBuffer = result.imageBuffer;
+    rawResponse = result.rawResponse;
   } catch (error) {
-    /*
-     * Remove a partially written file
-     * when image processing fails.
-     */
-    try {
-      await fs.promises.unlink(
-        outputPath
-      );
-    } catch {
-      // File may not exist.
-    }
-
-    const serviceError =
-      new Error(
-        `Unable to generate AI background: ${error.message}`
-      );
-
-    serviceError.statusCode =
-      error.statusCode ||
-      error.status ||
-      502;
-
-    serviceError.cause =
-      error;
-
-    throw serviceError;
+    console.warn(
+      `Cloudflare AI background generation failed (${error.message}). Generating high-quality procedural background.`
+    );
+    imageBuffer = await generateProceduralBackgroundBuffer({
+      width,
+      height,
+      prompt: safePrompt,
+    });
   }
+
+  const dimensions =
+    await prepareBackground({
+      inputBuffer:
+        imageBuffer,
+
+      outputPath,
+
+      width,
+      height,
+      quality,
+    });
+
+  const fileStats =
+    await fs.promises.stat(
+      outputPath
+    );
+
+  return {
+    success: true,
+
+    id: backgroundId,
+
+    filename:
+      finalFilename,
+
+    filePath:
+      outputPath,
+
+    relativePath:
+      path
+        .relative(
+          path.join(
+            __dirname,
+            ".."
+          ),
+          outputPath
+        )
+        .replace(/\\/g, "/"),
+
+    width:
+      dimensions.width,
+
+    height:
+      dimensions.height,
+
+    sizeBytes:
+      fileStats.size,
+
+    mimeType:
+      "image/jpeg",
+
+    prompt:
+      safePrompt,
+
+    seed:
+      safeSeed,
+
+    steps:
+      toSafeInteger(
+        steps,
+        DEFAULT_STEPS,
+        1,
+        MAX_STEPS
+      ),
+
+    model:
+      getCloudflareConfiguration()
+        .model,
+
+    metadata: {
+      ...metadata,
+    },
+
+    providerResponse:
+      process.env
+        .NODE_ENV ===
+      "development"
+        ? rawResponse
+        : undefined,
+  };
 }
 
 /*

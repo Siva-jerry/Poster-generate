@@ -1,5 +1,8 @@
 import {
   ActiveSelection,
+  FabricImage,
+  Gradient,
+  Shadow,
 } from "fabric";
 
 import {
@@ -408,6 +411,11 @@ function useFabricCanvas({
 
   const initializationRef =
     useRef(false);
+
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   /*
   |--------------------------------------------------------------------------
@@ -1509,6 +1517,266 @@ const getSelectedText =
 
   /*
   |--------------------------------------------------------------------------
+  | Canva-Grade Image & Graphic Operations
+  |--------------------------------------------------------------------------
+  */
+
+  const addImage = useCallback((url, options = {}) => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || !url) return;
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const fImg = new FabricImage(img, {
+        left: options.left || fabricCanvas.getWidth() / 2,
+        top: options.top || fabricCanvas.getHeight() / 2,
+        originX: "center",
+        originY: "center",
+        cornerColor: "#00C4CC",
+        cornerStrokeColor: "#FFFFFF",
+        cornerStyle: "circle",
+        transparentCorners: false,
+        cornerSize: 12,
+        borderColor: "#00C4CC",
+        borderScaleFactor: 2,
+        ...options,
+      });
+
+      const maxWidth = options.maxWidth || Math.round(fabricCanvas.getWidth() * 0.7);
+      const maxHeight = options.maxHeight || Math.round(fabricCanvas.getHeight() * 0.7);
+      if (fImg.width > maxWidth || fImg.height > maxHeight) {
+        const scale = Math.min(maxWidth / fImg.width, maxHeight / fImg.height);
+        fImg.scale(scale);
+      }
+
+      fabricCanvas.add(fImg);
+      fabricCanvas.setActiveObject(fImg);
+      fabricCanvas.requestRenderAll();
+      setDirty(true);
+    };
+    img.src = url;
+  }, [setDirty]);
+
+  const addElement = useCallback((element, options = {}) => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || !element) return;
+
+    if (element.svg) {
+      const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(element.svg)}`;
+      const img = new Image();
+      img.onload = () => {
+        const fImg = new FabricImage(img, {
+          left: options.left || fabricCanvas.getWidth() / 2,
+          top: options.top || fabricCanvas.getHeight() / 2,
+          originX: "center",
+          originY: "center",
+          cornerColor: "#00C4CC",
+          cornerStrokeColor: "#FFFFFF",
+          cornerStyle: "circle",
+          transparentCorners: false,
+          cornerSize: 12,
+          borderColor: "#00C4CC",
+          ...options,
+        });
+
+        const targetSize = options.size || 220;
+        const scale = targetSize / Math.max(fImg.width || 100, fImg.height || 100);
+        fImg.scale(scale);
+
+        fabricCanvas.add(fImg);
+        fabricCanvas.setActiveObject(fImg);
+        fabricCanvas.requestRenderAll();
+        setDirty(true);
+      };
+      img.src = dataUrl;
+    }
+  }, [setDirty]);
+
+  const setCanvasBackground = useCallback((bgOption) => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || !bgOption) return;
+
+    if (typeof bgOption === "string") {
+      fabricCanvas.backgroundColor = bgOption;
+      fabricCanvas.requestRenderAll();
+      setDirty(true);
+      return;
+    }
+
+    if (bgOption.type === "solid" && bgOption.color) {
+      fabricCanvas.backgroundColor = bgOption.color;
+      fabricCanvas.requestRenderAll();
+      setDirty(true);
+    } else if (bgOption.type === "gradient" && bgOption.gradient?.colors) {
+      const colors = bgOption.gradient.colors;
+      const colorStops = colors.map((c, idx) => ({
+        offset: idx / Math.max(1, colors.length - 1),
+        color: c,
+      }));
+      fabricCanvas.backgroundColor = new Gradient({
+        type: "linear",
+        gradientUnits: "percentage",
+        coords: { x1: 0, y1: 0, x2: 0, y2: 1 },
+        colorStops,
+      });
+      fabricCanvas.requestRenderAll();
+      setDirty(true);
+    } else if (bgOption.type === "image" && bgOption.url) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const fImg = new FabricImage(img, {
+          originX: "left",
+          originY: "top",
+          left: 0,
+          top: 0,
+          scaleX: fabricCanvas.getWidth() / img.width,
+          scaleY: fabricCanvas.getHeight() / img.height,
+          selectable: false,
+          evented: false,
+        });
+        fabricCanvas.backgroundImage = fImg;
+        fabricCanvas.requestRenderAll();
+        setDirty(true);
+      };
+      img.src = bgOption.url;
+    }
+  }, [setDirty]);
+
+  const setOpacity = useCallback((val) => {
+    const fabricCanvas = canvasInstanceRef.current;
+    const active = fabricCanvas?.getActiveObject();
+    if (!active) return;
+    active.set("opacity", val);
+    fabricCanvas.requestRenderAll();
+    setDirty(true);
+  }, [setDirty]);
+
+  const flipHorizontal = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    const active = fabricCanvas?.getActiveObject();
+    if (!active) return;
+    active.set("flipX", !active.flipX);
+    fabricCanvas.requestRenderAll();
+    setDirty(true);
+  }, [setDirty]);
+
+  const flipVertical = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    const active = fabricCanvas?.getActiveObject();
+    if (!active) return;
+    active.set("flipY", !active.flipY);
+    fabricCanvas.requestRenderAll();
+    setDirty(true);
+  }, [setDirty]);
+
+  const lockSelected = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    const active = fabricCanvas?.getActiveObject();
+    if (!active) return;
+    active.set({
+      lockMovementX: true,
+      lockMovementY: true,
+      lockRotation: true,
+      lockScalingX: true,
+      lockScalingY: true,
+      hasControls: false,
+    });
+    fabricCanvas.requestRenderAll();
+    setDirty(true);
+  }, [setDirty]);
+
+  const unlockSelected = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    const active = fabricCanvas?.getActiveObject();
+    if (!active) return;
+    active.set({
+      lockMovementX: false,
+      lockMovementY: false,
+      lockRotation: false,
+      lockScalingX: false,
+      lockScalingY: false,
+      hasControls: true,
+    });
+    fabricCanvas.requestRenderAll();
+    setDirty(true);
+  }, [setDirty]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | History (Undo / Redo) Engine
+  |--------------------------------------------------------------------------
+  */
+
+  const historyRef = useRef([]);
+  const historyIndexRef = useRef(-1);
+  const isHistoryProcessingRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const saveHistory = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || isHistoryProcessingRef.current) return;
+
+    try {
+      const json = JSON.stringify(fabricCanvas.toJSON());
+      const currentIndex = historyIndexRef.current;
+      const history = historyRef.current.slice(0, currentIndex + 1);
+
+      if (history.length > 0 && history[history.length - 1] === json) return;
+
+      history.push(json);
+      if (history.length > 35) history.shift();
+
+      historyRef.current = history;
+      historyIndexRef.current = history.length - 1;
+
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(false);
+    } catch (e) {
+      console.warn("History save error:", e);
+    }
+  }, []);
+
+  const undo = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || historyIndexRef.current <= 0) return;
+
+    isHistoryProcessingRef.current = true;
+    historyIndexRef.current -= 1;
+    const targetState = historyRef.current[historyIndexRef.current];
+
+    fabricCanvas.loadFromJSON(JSON.parse(targetState)).then(() => {
+      fabricCanvas.requestRenderAll();
+      isHistoryProcessingRef.current = false;
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    }).catch(() => {
+      isHistoryProcessingRef.current = false;
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    const fabricCanvas = canvasInstanceRef.current;
+    if (!fabricCanvas || historyIndexRef.current >= historyRef.current.length - 1) return;
+
+    isHistoryProcessingRef.current = true;
+    historyIndexRef.current += 1;
+    const targetState = historyRef.current[historyIndexRef.current];
+
+    fabricCanvas.loadFromJSON(JSON.parse(targetState)).then(() => {
+      fabricCanvas.requestRenderAll();
+      isHistoryProcessingRef.current = false;
+      setCanUndo(historyIndexRef.current > 0);
+      setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+    }).catch(() => {
+      isHistoryProcessingRef.current = false;
+    });
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
   | Initialize Fabric once
   |--------------------------------------------------------------------------
   */
@@ -1598,6 +1866,7 @@ const getSelectedText =
             payload
           ) {
             setDirty(true);
+            saveHistory();
 
             onObjectModified?.(
               payload
@@ -1614,6 +1883,7 @@ const getSelectedText =
             payload
           ) {
             setDirty(true);
+            saveHistory();
 
             onCanvasChange?.({
               ...payload,
@@ -1625,6 +1895,7 @@ const getSelectedText =
           onObjectAdded(
             payload
           ) {
+            saveHistory();
             onCanvasChange?.({
               ...payload,
               action:
@@ -1635,6 +1906,7 @@ const getSelectedText =
           onObjectRemoved(
             payload
           ) {
+            saveHistory();
             onCanvasChange?.({
               ...payload,
               action:
@@ -1719,13 +1991,13 @@ const getSelectedText =
           return;
         }
 
-        fitToWorkspace();
-
-        refreshFabricWorkspace(
+        onReadyRef.current?.(
           fabricCanvas
         );
 
-        onReady?.(
+        fitToWorkspace();
+
+        refreshFabricWorkspace(
           fabricCanvas
         );
       }
@@ -1807,7 +2079,6 @@ const getSelectedText =
     saveCanvas,
     fitToWorkspace,
 
-    onReady,
     onSelectionChange,
     onObjectModified,
     onCanvasChange,
@@ -1977,6 +2248,32 @@ const getSelectedText =
   changeCase,
 
   getSelectedText,
+
+  /*
+  |--------------------------------------------------------------------------
+  | Canva-Grade Media & Graphics
+  |--------------------------------------------------------------------------
+  */
+
+  addImage,
+  addElement,
+  setBackground: setCanvasBackground,
+  setOpacity,
+  flipHorizontal,
+  flipVertical,
+  lockSelected,
+  unlockSelected,
+
+  /*
+  |--------------------------------------------------------------------------
+  | History (Undo / Redo)
+  |--------------------------------------------------------------------------
+  */
+
+  undo,
+  redo,
+  canUndo,
+  canRedo,
 
   /*
   |--------------------------------------------------------------------------

@@ -18,7 +18,7 @@ const router = express.Router();
 | {
 |   "ownerKey": "guest_123",
 |   "designId": "optional-design-uuid",
-|   "title": "Siva Birthday Poster",
+|   "title": "Peter Parker Birthday Poster",
 |   "format": "png",
 |   "quality": 92,
 |   "imageDataUrl": "data:image/png;base64,..."
