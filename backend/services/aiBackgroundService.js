@@ -3,6 +3,9 @@ const path = require("path");
 const crypto = require("crypto");
 const sharp = require("sharp");
 
+sharp.cache(false);
+sharp.concurrency(1);
+
 /*
 |--------------------------------------------------------------------------
 | AI background configuration

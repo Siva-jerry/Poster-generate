@@ -3,6 +3,10 @@ const path = require("path");
 const crypto = require("crypto");
 const sharp = require("sharp");
 
+// Optimize Sharp memory for cloud containers (Render 512MB free tier)
+sharp.cache(false);
+sharp.concurrency(1);
+
 /*
 |--------------------------------------------------------------------------
 | Poster composition configuration
